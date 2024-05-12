@@ -1,0 +1,15 @@
+[package]
+name = "pgn-parser"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+pgn-reader = "0.26.0"
+shakmaty = "0.27.0"
+dry-mods = "0.1.5"
+paste = "1.0.15"
+
+[dev-dependencies]
+test-case = "3.3.1"
+pretty_assertions = "1.4.0"
+proptest = "1.4.0"
