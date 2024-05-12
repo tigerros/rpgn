@@ -23,7 +23,9 @@ pub enum EcoParseError {
 pub struct SubcategoryGreaterThan99;
 
 impl Eco {
-    /// Returns `Err(())` if `subcategory` is greater than 99.
+    /// # Errors
+    /// 
+    /// `subcategory` is greater than 99.
     pub const fn new(category: EcoCategory, subcategory: u8) -> Result<Self, SubcategoryGreaterThan99> {
         if subcategory > 99 {
             Err(SubcategoryGreaterThan99)
@@ -39,7 +41,9 @@ impl Eco {
         self.subcategory
     }
 
-    /// Returns `Err(())` if `new_subcategory` is greater than 99.
+    /// # Errors
+    /// 
+    /// `new_subcategory` is greater than 99.
     pub fn set_subcategory(&mut self, new_subcategory: u8) -> Result<(), SubcategoryGreaterThan99> {
         if new_subcategory > 99 {
             Err(SubcategoryGreaterThan99)
@@ -127,7 +131,13 @@ mod tests {
 
         #[test]
         fn from_invalid_subcategory(category in "[a-eA-E]", subcategory in 100..255) {
-            assert!(Eco::new(EcoCategory::try_from(char::from_str(&category).unwrap()).unwrap(), subcategory as u8).is_err());
+            // CLIPPY: The proptest range of subcategory makes sure none of these warnings matter.
+            #[allow(clippy::cast_sign_loss)]
+            #[allow(clippy::cast_possible_truncation)]
+            #[allow(clippy::as_conversions)]
+            {
+                assert!(Eco::new(EcoCategory::try_from(char::from_str(&category).unwrap()).unwrap(), subcategory as u8).is_err());
+            }
         }
     }
 }

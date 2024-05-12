@@ -20,6 +20,8 @@ impl Display for Round {
 
                     f.write_str(&round_number.to_string())?;
 
+                    // CLIPPY: if this for loop executes then round_numbers.len() must be 1 or above
+                    #[allow(clippy::arithmetic_side_effects)]
                     if i < round_numbers.len() - 1 {
                         f.write_char('.')?;
                     }

@@ -15,6 +15,9 @@ impl MoveNumber {
     }
     
     pub const fn from_color_and_number(color: Color, number: NonZeroU16) -> Self {
+        // CLIPPY: Since `number` is a non-zero number, `number.get() - 1` will never overflow.
+        // And there's never going to be enough moves for * 2 to cause an overflow.
+        #[allow(clippy::arithmetic_side_effects)]
         match color {
             Color::White => Self { index: (number.get() - 1) * 2 },
             Color::Black => Self { index: ((number.get() - 1) * 2) + 1 }
@@ -33,12 +36,14 @@ impl MoveNumber {
     /// For example, white's first move has an "index" of 0, but a number of 1.
     /// Black's first move has an index of 1, and a number of 1 also.
     pub const fn number(self) -> NonZeroU16 {
-        // SAFETY: u16 / 2 >= 0 so 1 + u16 / 2 > 0
+        // SAFETY & CLIPPY: u16 / 2 >= 0 so u16::MAX > (1 + u16 / 2) > 0
+        #[allow(clippy::arithmetic_side_effects)]
         unsafe { NonZeroU16::new_unchecked(1 + (self.index / 2)) }
     }
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
     use pretty_assertions::assert_eq;

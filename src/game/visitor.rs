@@ -44,11 +44,11 @@ impl Visitor {
 
     /// Moves relevant contents of the visitor into a new `Game`.
     ///
-    /// Call this after you visit `GameVisitor` with a reader. Otherwise, this will just slow down the program and nothing else.
+    /// Call this after you visit `GameVisitor` with a reader.
     ///
     /// This is done because `pgn_reader`'s `Visitor` trait has a required `end_game`
     /// function, which would ideally return `Game`, but it does not consume the visitor,
-    /// so everything is borrowed.
+    /// so nothing can be moved.
     pub fn into_game(self) -> Result<Game, SanErrorWithMoveNumber> {
         self.result?;
 
@@ -94,7 +94,11 @@ impl pgn_reader::Visitor for Visitor {
             return Skip(true);
         }
 
-        self.current_move_number.index -= 1;
+        // CLIPPY: There's never going to be u16::MAX moves.
+        #[allow(clippy::arithmetic_side_effects)]
+        {
+            self.current_move_number.index -= 1;
+        }
 
         let current_variation = self.current_variation_tree.last_mut().unwrap_or(&mut self.root_variation);
         let new_variation = current_variation.new_variation_at_last_move(50);
@@ -115,7 +119,11 @@ impl pgn_reader::Visitor for Visitor {
         };
 
         let current_variation_move_number = current_variation.move_number();
-        self.current_move_number = MoveNumber { index: current_variation_move_number.index + 1 };
+        // CLIPPY: There's never going to be u16::MAX moves.
+        #[allow(clippy::arithmetic_side_effects)]
+        {
+            self.current_move_number = MoveNumber { index: current_variation_move_number.index + 1 };
+        }
 
         let current_variation_parent = self.current_variation_tree.last_mut().unwrap_or(&mut self.root_variation);
 
@@ -127,7 +135,12 @@ impl pgn_reader::Visitor for Visitor {
             return;
         }
 
-        self.current_move_number.index += 1;
+        // CLIPPY: There's never going to be u16::MAX moves.
+        #[allow(clippy::arithmetic_side_effects)]
+        {
+            self.current_move_number.index += 1;
+        }
+
 
         let current_variation = self.current_variation_tree.last_mut().unwrap_or(&mut self.root_variation);
 

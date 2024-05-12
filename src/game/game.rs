@@ -1,3 +1,4 @@
+use std::str::FromStr;
 use shakmaty::san::{San, SanPlus, Suffix};
 use super::visitor::Visitor;
 use crate::{Eco, game::{Outcome, Date, Round}, MoveNumber, SanErrorWithMoveNumber, Variation};
@@ -21,13 +22,22 @@ pub struct Game {
 
 #[derive(Debug)]
 pub enum GameFromPgnError {
-    ParseError(std::io::Error),
+    Io(std::io::Error),
     EmptyReader,
     SanError(SanErrorWithMoveNumber)
 }
 
-impl Game {
-    pub fn from_pgn(pgn: &str) -> Result<Self, GameFromPgnError> {
+impl FromStr for Game {
+    type Err = GameFromPgnError;
+
+    /// Tries to parse this PGN string into a valid game.
+    ///
+    /// # Errors
+    ///
+    /// - [`GameFromPgnError::Io`]: an IO error occurred.
+    /// - [`GameFromPgnError::EmptyReader`]: the string is empty.
+    /// - [`GameFromPgnError::SanError`]: there is an illegal SAN in the PGN.
+    fn from_str(pgn: &str) -> Result<Self, Self::Err> {
         let mut reader = pgn_reader::BufferedReader::new_cursor(pgn);
         let mut game_visitor = Visitor::new();
 
@@ -38,11 +48,13 @@ impl Game {
                 Ok(game) => Ok(game),
                 Err(e) => Err(GameFromPgnError::SanError(e))
             },
-            Err(e) => Err(GameFromPgnError::ParseError(e)),
+            Err(e) => Err(GameFromPgnError::Io(e)),
             Ok(None) => Err(GameFromPgnError::EmptyReader),
         }
     }
+}
 
+impl Game {
     pub fn to_pgn(&self) -> String {
         fn push_moves_and_variations(mut move_number: MoveNumber, variation: &Variation, mut very_first_move: bool, pgn: &mut String) {
             for r#move in variation.moves() {
@@ -73,7 +85,11 @@ impl Game {
                     pgn.push_str(" )");
                 }
 
-                move_number.index += 1;
+                // CLIPPY: There's never going to be u16::MAX moves.
+                #[allow(clippy::arithmetic_side_effects)]
+                {
+                    move_number.index += 1;
+                }
             }
         }
 
@@ -141,7 +157,7 @@ impl Game {
 #[allow(clippy::expect_used)]
 mod tests {
     use shakmaty::{Color, san::SanError};
-    use crate::{EcoCategory, push_moves};
+    use crate::{EcoCategory, variation::push_moves};
     use super::*;
     use test_case::test_case;
     use pretty_assertions::{assert_eq};
@@ -199,7 +215,7 @@ mod tests {
         // SAFETY: 3 is not 0
         let mut bc5_variation = correct_root_variation.new_variation_at(MoveNumber::from_color_and_number(Color::Black, unsafe { NonZeroU16::new_unchecked(3) }), 1).unwrap();
 
-        println!("Bc5 var pos: {:?}", bc5_variation.starting_position());
+        //println!("Bc5 var pos: {:?}", bc5_variation.starting_position());
 
         bc5_variation.push_move(&San::from_ascii(b"Bc5").unwrap()).unwrap();
 
@@ -335,13 +351,26 @@ mod tests {
         }
     }
 
-    // TODO: Tests to make sure that the PGN contains only legal moves
+    #[test_case(PGN1, Ok(pgn1_parsed()))]
+    #[test_case(PGN2, Ok(pgn2_parsed()))]
+    #[test_case(PGN3, Ok(pgn3_parsed()))]
+    fn to_pgn_from_pgn(pgn: &str, correct_game: Result<Game, GameFromPgnError>) {
+        match correct_game {
+            Ok(game) => {
+                assert_eq!(game.to_pgn(), pgn);
+                assert_eq!(Game::from_str(pgn).unwrap(), game);
+            },
+            Err(e) => {
+                fn similar_error(e: GameFromPgnError, e2: GameFromPgnError) -> bool {
+                    matches!((e, e2), (GameFromPgnError::Io(_), GameFromPgnError::Io(_)) | (GameFromPgnError::SanError(_), GameFromPgnError::SanError(_)))
+                }
 
-    #[test_case(PGN1, &pgn1_parsed())]
-    #[test_case(PGN2, &pgn2_parsed())]
-    #[test_case(PGN3, &pgn3_parsed())]
-    fn to_pgn_from_pgn(pgn: &str, correct_game: &Game) {
-        assert_eq!(correct_game.to_pgn(), pgn);
-        assert_eq!(&Game::from_pgn(pgn).unwrap(), correct_game);
+                let try_game = Game::from_str(pgn);
+                dbg!("try_game: {try_game:#?}");
+                dbg!("e: {e:#?}");
+                assert!(try_game.is_err());
+                assert!(similar_error(try_game.unwrap_err(), e));
+            }
+        }
     }
 }
