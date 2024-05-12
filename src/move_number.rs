@@ -1,7 +1,7 @@
 use std::num::NonZeroU16;
 use shakmaty::Color;
 
-/// A wrapper around a u16 with some methods that are relevant to a move number.
+/// A wrapper around a `u16` with some methods that are relevant to a move number.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct MoveNumber {
     /// The backing field of the [`MoveNumber`].
@@ -10,10 +10,6 @@ pub struct MoveNumber {
 }
 
 impl MoveNumber {
-    pub const fn minimum() -> Self {
-        Self { index: 0 }
-    }
-    
     pub const fn from_color_and_number(color: Color, number: NonZeroU16) -> Self {
         // CLIPPY: Since `number` is a non-zero number, `number.get() - 1` will never overflow.
         // And there's never going to be enough moves for * 2 to cause an overflow.

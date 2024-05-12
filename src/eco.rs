@@ -2,6 +2,7 @@ use std::fmt::{Display, Formatter};
 use std::str::FromStr;
 use crate::EcoCategory;
 
+/// The ECO (Encyclopaedia of Chess Openings) code of an opening.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Eco {
     pub category: EcoCategory,
