@@ -2,6 +2,13 @@
 name = "pgn-parser"
 version = "0.1.0"
 edition = "2021"
+authors = ["Leonard D. <tigerros.gh@gmail.com>"]
+description = "A crate for parsing PGNs (Portable [Chess] Game Notation)."
+license = "GPL-3.0"
+repository = "https://github.com/tigerros/pgn-parser"
+categories = ["parser-implementations", "game-development", "parsing"]
+keywords = ["chess", "pgn", "parser"]
+include = ["src", "README.md"]
 
 [dependencies]
 pgn-reader = "0.26.0"
