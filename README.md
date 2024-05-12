@@ -1,6 +1,6 @@
-[![docs.rs](https://img.shields.io/docsrs/ruci?logo=docs.rs&label=docs.rs)](https://docs.rs/ruci/)
-[![crates.io](https://img.shields.io/crates/v/ruci?logo=rust)](https://crates.io/crates/ruci)
-[![license](https://img.shields.io/crates/l/ruci)](https://github.com/tigerros/ruci/blob/master/LICENSE)
+[![docs.rs](https://img.shields.io/docsrs/pgn-parser?logo=docs.rs&label=docs.rs)](https://docs.rs/pgn-parser/)
+[![crates.io](https://img.shields.io/crates/v/pgn-parser?logo=rust)](https://crates.io/crates/pgn-parser)
+[![license](https://img.shields.io/crates/l/pgn-parser)](https://github.com/tigerros/pgn-parser/blob/master/LICENSE)
 
 # pgn-parser
 
