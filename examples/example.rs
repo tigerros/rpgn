@@ -1,4 +1,4 @@
-use pgn_parser::Game;
+use rpgn::Game;
 use std::str::FromStr;
 
 const PGN: &str = r#"[Event "Live Chess"]
