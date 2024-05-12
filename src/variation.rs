@@ -30,7 +30,7 @@ impl Variation {
     
     /// Creates a new root variation with the starting move number (white to move - 1) and starting position.
     pub fn new_starting_root_variation() -> Self {
-        Self::new_root_variation(MoveNumber::minimum(), Chess::new(), 100)
+        Self::new_root_variation(MoveNumber::MIN, Chess::new(), 100)
     }
     
     /// Returns [`None`] if the `move_number` argument doesn't match any moves in the variation.

@@ -147,7 +147,7 @@ impl Game {
 
         pgn.push('\n');
         // SAFETY: 1 is not 0
-        push_moves_and_variations(MoveNumber::minimum(), root_variation, true, &mut pgn);
+        push_moves_and_variations(MoveNumber::MIN, root_variation, true, &mut pgn);
         pgn
     }
 }

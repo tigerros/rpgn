@@ -36,7 +36,7 @@ impl Visitor {
             eco: None,
             time_control: None,
             current_variation_tree: Vec::with_capacity(0),
-            current_move_number: MoveNumber::minimum(),
+            current_move_number: MoveNumber::MIN,
             root_variation: Variation::new_starting_root_variation(),
             result: Ok(())
         }

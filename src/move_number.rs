@@ -10,6 +10,7 @@ pub struct MoveNumber {
 }
 
 impl MoveNumber {
+    pub const MIN: Self = Self { index: 0 };
     pub const fn from_color_and_number(color: Color, number: NonZeroU16) -> Self {
         // CLIPPY: Since `number` is a non-zero number, `number.get() - 1` will never overflow.
         // And there's never going to be enough moves for * 2 to cause an overflow.
