@@ -37,6 +37,20 @@ impl MoveNumber {
         #[allow(clippy::arithmetic_side_effects)]
         unsafe { NonZeroU16::new_unchecked(1 + (self.index / 2)) }
     }
+
+    /// Returns how many moves white has played *after* this move number was reached.
+    /// 
+    /// This means it will always return at least 1, because the minimum [`MoveNumber`] is 0 which represents white's first move.
+    /// So, after that move, white has already played a move.
+    pub const fn white_move_count(self) -> NonZeroU16 {
+        // SAFETY: (i + 2) / 2 >= 0 because if i == 0 then (i + 2) / 2 = 1
+        unsafe { NonZeroU16::new_unchecked((self.index + 2) / 2) }
+    }
+
+    /// Returns how many moves black has played *after* this move number was reached.
+    pub const fn black_move_count(self) -> u16 {
+        (self.index + 1) / 2
+    }
 }
 
 #[cfg(test)]
@@ -76,5 +90,25 @@ mod tests {
     #[test_case(MoveNumber::from_color_and_number(Color::Black, NonZeroU16::new(6).unwrap()), NonZeroU16::new(6).unwrap())]
     fn number(move_number: MoveNumber, correct_number: NonZeroU16) {
         assert_eq!(move_number.number(), correct_number);
+    }
+    
+    #[test_case(MoveNumber { index: 0 }, NonZeroU16::new(1).unwrap())]
+    #[test_case(MoveNumber { index: 1 }, NonZeroU16::new(1).unwrap())]
+    #[test_case(MoveNumber { index: 2 }, NonZeroU16::new(2).unwrap())]
+    #[test_case(MoveNumber { index: 3 }, NonZeroU16::new(2).unwrap())]
+    #[test_case(MoveNumber { index: 4 }, NonZeroU16::new(3).unwrap())]
+    #[test_case(MoveNumber { index: 5 }, NonZeroU16::new(3).unwrap())]
+    fn white_move_count(move_number: MoveNumber, correct_white_move_count: NonZeroU16) {
+        assert_eq!(move_number.white_move_count(), correct_white_move_count);
+    }
+
+    #[test_case(MoveNumber { index: 0 }, 0)]
+    #[test_case(MoveNumber { index: 1 }, 1)]
+    #[test_case(MoveNumber { index: 2 }, 1)]
+    #[test_case(MoveNumber { index: 3 }, 2)]
+    #[test_case(MoveNumber { index: 4 }, 2)]
+    #[test_case(MoveNumber { index: 5 }, 3)]
+    fn black_move_count(move_number: MoveNumber, correct_black_move_count: u16) {
+        assert_eq!(move_number.black_move_count(), correct_black_move_count);
     }
 }
