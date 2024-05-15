@@ -21,6 +21,7 @@ impl MoveNumber {
         }
     }
 
+    /// What side has played a move to get to this move number.
     pub const fn color(self) -> Color {
         if self.index % 2 == 0 {
             Color::White
@@ -70,6 +71,8 @@ mod tests {
 
     #[test_case(MoveNumber::from_color_and_number(Color::White, NonZeroU16::new(1).unwrap()), Color::White)]
     #[test_case(MoveNumber::from_color_and_number(Color::Black, NonZeroU16::new(1).unwrap()), Color::Black)]
+    #[test_case(MoveNumber::from_color_and_number(Color::White, NonZeroU16::new(2).unwrap()), Color::White)]
+    #[test_case(MoveNumber::from_color_and_number(Color::Black, NonZeroU16::new(2).unwrap()), Color::Black)]
     fn color(move_number: MoveNumber, correct_color: Color) {
         assert_eq!(move_number.color(), correct_color);
     }
