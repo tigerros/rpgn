@@ -1,4 +1,7 @@
+use std::io::Read;
+use std::ptr::read;
 use std::str::FromStr;
+use pgn_reader::BufferedReader;
 use shakmaty::san::{San, SanPlus, Suffix};
 use super::visitor::Visitor;
 use crate::{Eco, game::{Outcome, Date, Round}, MoveNumber, SanErrorWithMoveNumber, Variation};
@@ -23,38 +26,59 @@ pub struct Game {
 #[derive(Debug)]
 pub enum GameFromPgnError {
     Io(std::io::Error),
-    EmptyReader,
     SanError(SanErrorWithMoveNumber)
 }
 
-impl FromStr for Game {
-    type Err = GameFromPgnError;
-
-    /// Tries to parse this PGN string into a valid game.
+impl Game {
+    /// Reads all games in this string.
     ///
     /// # Errors
+    ///
+    /// These are errors for every item in the `Vec`. This function does not error itself.
     ///
     /// - [`GameFromPgnError::Io`]: an IO error occurred.
     /// - [`GameFromPgnError::EmptyReader`]: the string is empty.
     /// - [`GameFromPgnError::SanError`]: there is an illegal SAN in the PGN.
-    fn from_str(pgn: &str) -> Result<Self, Self::Err> {
+    pub fn from_str(pgn: &str) -> Vec<Result<Self, GameFromPgnError>> {
         let mut reader = pgn_reader::BufferedReader::new_cursor(pgn);
-        let mut game_visitor = Visitor::new();
-
-        let result = reader.read_game(&mut game_visitor);
-
-        match result {
-            Ok(Some(())) => match game_visitor.into_game() {
-                Ok(game) => Ok(game),
-                Err(e) => Err(GameFromPgnError::SanError(e))
-            },
-            Err(e) => Err(GameFromPgnError::Io(e)),
-            Ok(None) => Err(GameFromPgnError::EmptyReader),
-        }
+       
+        Self::from_reader(&mut reader)
     }
-}
+    
+    /// Reads all games in this reader.
+    ///
+    /// It is guaranteed that the resulting `Vec` will have the same amount of games as the reader does.
+    /// Some of them might be errors though.
+    /// 
+    /// # Errors
+    /// 
+    /// These are errors for every item in the `Vec`. This function does not error itself.
+    ///
+    /// - [`GameFromPgnError::Io`]: an IO error occurred.
+    /// - [`GameFromPgnError::EmptyReader`]: the string is empty.
+    /// - [`GameFromPgnError::SanError`]: there is an illegal SAN in the PGN.
+    pub fn from_reader<R>(reader: &mut BufferedReader<R>) -> Vec<Result<Self, GameFromPgnError>> where R: Read {
+        let mut games = Vec::new();
 
-impl Game {
+        loop {
+            let mut game_visitor = Visitor::new();
+
+            let result = reader.read_game(&mut game_visitor);
+
+            match result {
+                Ok(Some(())) => match game_visitor.into_game() {
+                    Ok(game) => games.push(Ok(game)),
+                    Err(e) => games.push(Err(GameFromPgnError::SanError(e))),
+                },
+                Err(e) => games.push(Err(GameFromPgnError::Io(e))),
+                // Empty reader
+                Ok(None) => break,
+            }
+        }
+
+        games
+    }
+
     pub fn to_pgn(&self) -> String {
         fn push_moves_and_variations(mut move_number: MoveNumber, variation: &Variation, mut very_first_move: bool, pgn: &mut String) {
             for r#move in variation.moves() {
@@ -372,5 +396,15 @@ mod tests {
                 assert!(similar_error(try_game.unwrap_err(), e));
             }
         }
+    }
+
+    #[test]
+    fn from_reader() {
+        let mut reader = BufferedReader::new_cursor(PGN1.to_string() + "\n" + PGN2 + "\n" + PGN3);
+        
+        assert_eq!(
+            &Game::from_reader(&mut reader).into_iter().filter_map(|game| game.ok()).collect::<Vec<_>>(),
+            &[pgn1_parsed(), pgn2_parsed(), pgn3_parsed()]
+        );
     }
 }
