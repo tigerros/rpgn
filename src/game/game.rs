@@ -1,6 +1,4 @@
 use std::io::Read;
-use std::ptr::read;
-use std::str::FromStr;
 use pgn_reader::BufferedReader;
 use shakmaty::san::{San, SanPlus, Suffix};
 use super::visitor::Visitor;
@@ -30,6 +28,7 @@ pub enum GameFromPgnError {
 }
 
 impl Game {
+    #[allow(clippy::should_implement_trait)]
     /// Reads all games in this string.
     ///
     /// # Errors
@@ -382,18 +381,19 @@ mod tests {
         match correct_game {
             Ok(game) => {
                 assert_eq!(game.to_pgn(), pgn);
-                assert_eq!(Game::from_str(pgn).unwrap(), game);
+                assert_eq!(Game::from_str(pgn).first().unwrap().as_ref().unwrap(), &game);
             },
             Err(e) => {
-                fn similar_error(e: GameFromPgnError, e2: GameFromPgnError) -> bool {
+                const fn similar_error(e: &GameFromPgnError, e2: &GameFromPgnError) -> bool {
                     matches!((e, e2), (GameFromPgnError::Io(_), GameFromPgnError::Io(_)) | (GameFromPgnError::SanError(_), GameFromPgnError::SanError(_)))
                 }
 
                 let try_game = Game::from_str(pgn);
+                let try_game = try_game.first().unwrap().as_ref();
                 dbg!("try_game: {try_game:#?}");
                 dbg!("e: {e:#?}");
                 assert!(try_game.is_err());
-                assert!(similar_error(try_game.unwrap_err(), e));
+                assert!(similar_error(try_game.unwrap_err(), &e));
             }
         }
     }
@@ -403,7 +403,7 @@ mod tests {
         let mut reader = BufferedReader::new_cursor(PGN1.to_string() + "\n" + PGN2 + "\n" + PGN3);
         
         assert_eq!(
-            &Game::from_reader(&mut reader).into_iter().filter_map(|game| game.ok()).collect::<Vec<_>>(),
+            &Game::from_reader(&mut reader).into_iter().filter_map(Result::ok).collect::<Vec<_>>(),
             &[pgn1_parsed(), pgn2_parsed(), pgn3_parsed()]
         );
     }

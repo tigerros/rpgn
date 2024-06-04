@@ -42,7 +42,10 @@ impl MoveNumber {
     /// Returns how many moves white has played before this move number was reached.
     /// E.g. for `MoveNumber { index: 0 }` this is 0, for `MoveNumber { index: 1 }` it is 1.
     pub const fn white_move_count(self) -> u16 {
-        (self.index + 1) / 2
+        #[allow(clippy::arithmetic_side_effects)]
+        {
+            (self.index.saturating_add(1)) / 2
+        }
     }
 
     /// Returns how many moves black has played before this move number was reached.

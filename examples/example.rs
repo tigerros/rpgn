@@ -1,5 +1,4 @@
 use rpgn::Game;
-use std::str::FromStr;
 
 const PGN: &str = r#"[Event "Live Chess"]
 [Site "Chess.com"]
