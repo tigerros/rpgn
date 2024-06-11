@@ -8,7 +8,6 @@ use crate::MoveNumber;
 pub struct SanErrorWithMoveNumber(pub SanError, pub MoveNumber);
 
 /// An always legal variation.
-/// Internals are private to avoid corrupting the variation.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Variation {
     moves: Vec<(Move, Chess)>,
