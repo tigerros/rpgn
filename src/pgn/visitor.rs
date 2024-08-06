@@ -1,7 +1,7 @@
 use pgn_reader::{RawHeader, Skip};
 use std::str::FromStr;
 use shakmaty::san::SanPlus;
-use crate::{Variation, MoveNumber, Eco, game::{Date, Round, Outcome, Game}, SanErrorWithMoveNumber};
+use crate::{Variation, MoveNumber, Eco, pgn::{Date, Round, Outcome, Pgn}, SanErrorWithMoveNumber};
 
 pub(super) struct Visitor {
     event: Option<String>,
@@ -49,10 +49,10 @@ impl Visitor {
     /// This is done because `pgn_reader`'s `Visitor` trait has a required `end_game`
     /// function, which would ideally return `Game`, but it does not consume the visitor,
     /// so nothing can be moved.
-    pub fn into_game(self) -> Result<Game, SanErrorWithMoveNumber> {
+    pub fn into_game(self) -> Result<Pgn, SanErrorWithMoveNumber> {
         self.result?;
 
-        Ok(Game {
+        Ok(Pgn {
             event: self.event,
             site: self.site,
             date: self.date,

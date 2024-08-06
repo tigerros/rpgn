@@ -34,9 +34,10 @@ pub(crate) use concat_strings::concat_strings;
 dry_mods::mods! {
     mod pub use move_number,
     variation,
+    turn,
     eco,
     eco_category,
     time_control_field;
-    pub mod game;
+    pub mod pgn;
 }
-pub use game::Game;
+pub use pgn::Pgn;

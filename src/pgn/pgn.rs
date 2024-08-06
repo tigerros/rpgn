@@ -2,10 +2,10 @@ use std::io::Read;
 use pgn_reader::BufferedReader;
 use shakmaty::san::{San, SanPlus, Suffix};
 use super::visitor::Visitor;
-use crate::{Eco, game::{Outcome, Date, Round}, MoveNumber, SanErrorWithMoveNumber, Variation};
+use crate::{Eco, pgn::{Outcome, Date, Round}, MoveNumber, SanErrorWithMoveNumber, Variation, Turn};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Game {
+pub struct Pgn {
     pub event: Option<String>,
     pub site: Option<String>,
     pub date: Option<Date>,
@@ -22,12 +22,12 @@ pub struct Game {
 }
 
 #[derive(Debug)]
-pub enum GameFromPgnError {
+pub enum PgnParseError {
     Io(std::io::Error),
     SanError(SanErrorWithMoveNumber)
 }
 
-impl Game {
+impl Pgn {
     #[allow(clippy::should_implement_trait)]
     /// Reads all games in this string.
     ///
@@ -35,10 +35,10 @@ impl Game {
     ///
     /// These are errors for every item in the `Vec`. This function does not error itself.
     ///
-    /// - [`GameFromPgnError::Io`]: an IO error occurred.
-    /// - [`GameFromPgnError::EmptyReader`]: the string is empty.
-    /// - [`GameFromPgnError::SanError`]: there is an illegal SAN in the PGN.
-    pub fn from_str(pgn: &str) -> Vec<Result<Self, GameFromPgnError>> {
+    /// - [`PgnParseError::Io`]: an IO error occurred.
+    /// - [`PgnParseError::EmptyReader`]: the string is empty.
+    /// - [`PgnParseError::SanError`]: there is an illegal SAN in the PGN.
+    pub fn from_str(pgn: &str) -> Vec<Result<Self, PgnParseError>> {
         let mut reader = pgn_reader::BufferedReader::new_cursor(pgn);
        
         Self::from_reader(&mut reader)
@@ -53,10 +53,10 @@ impl Game {
     /// 
     /// These are errors for every item in the `Vec`. This function does not error itself.
     ///
-    /// - [`GameFromPgnError::Io`]: an IO error occurred.
-    /// - [`GameFromPgnError::EmptyReader`]: the string is empty.
-    /// - [`GameFromPgnError::SanError`]: there is an illegal SAN in the PGN.
-    pub fn from_reader<R>(reader: &mut BufferedReader<R>) -> Vec<Result<Self, GameFromPgnError>> where R: Read {
+    /// - [`PgnParseError::Io`]: an IO error occurred.
+    /// - [`PgnParseError::EmptyReader`]: the string is empty.
+    /// - [`PgnParseError::SanError`]: there is an illegal SAN in the PGN.
+    pub fn from_reader<R>(reader: &mut BufferedReader<R>) -> Vec<Result<Self, PgnParseError>> where R: Read {
         let mut games = Vec::new();
 
         loop {
@@ -67,9 +67,9 @@ impl Game {
             match result {
                 Ok(Some(())) => match game_visitor.into_game() {
                     Ok(game) => games.push(Ok(game)),
-                    Err(e) => games.push(Err(GameFromPgnError::SanError(e))),
+                    Err(e) => games.push(Err(PgnParseError::SanError(e))),
                 },
-                Err(e) => games.push(Err(GameFromPgnError::Io(e))),
+                Err(e) => games.push(Err(PgnParseError::Io(e))),
                 // Empty reader
                 Ok(None) => break,
             }
@@ -80,7 +80,8 @@ impl Game {
 
     pub fn to_pgn(&self) -> String {
         fn push_moves_and_variations(mut move_number: MoveNumber, variation: &Variation, mut very_first_move: bool, pgn: &mut String) {
-            for r#move in variation.moves() {
+            for turn in variation.turns() {
+                let Turn { move_played, position, variations: subvariations } = turn;
                 if very_first_move {
                     very_first_move = false;
                 } else {
@@ -96,13 +97,11 @@ impl Game {
                 }
 
                 pgn.push_str(&SanPlus {
-                    san: San::from_move(&r#move.1, &r#move.0),
-                    suffix: Suffix::from_position(&r#move.1),
+                    san: San::from_move(position, move_played),
+                    suffix: Suffix::from_position(position),
                 }.to_string());
 
-                let subvariation = variation.get_variation(move_number);
-
-                if let Some(subvariation) = subvariation {
+                for subvariation in subvariations {
                     pgn.push_str(" (");
                     push_moves_and_variations(move_number, subvariation, false, pgn);
                     pgn.push_str(" )");
@@ -179,12 +178,13 @@ impl Game {
 #[allow(clippy::unwrap_used)]
 #[allow(clippy::expect_used)]
 mod tests {
-    use shakmaty::{Color, san::SanError};
-    use crate::{EcoCategory, variation::push_moves};
+    use shakmaty::{Chess, Color, Move, san::SanError};
+    use crate::{EcoCategory, variation::play_moves};
     use super::*;
     use test_case::test_case;
     use pretty_assertions::{assert_eq};
     use std::num::{NonZeroU16, NonZeroU8};
+    use crate::variation::play_san_strings;
 
     const PGN1: &str = r#"[Event "Let's Play!"]
 [Site "Chess.com"]
@@ -221,30 +221,39 @@ mod tests {
 
 1. e4 ( 1. d4 1... d5 ( 1... f5 2. g3 ( 2. c4 2... Nf6 3. Nc3 3... e6 ( 3... g6 ) 4. Nf3 ) 2... Nf6 ) ) 1... e5 2. Nf3 2... Nc6 3. Bc4 3... Nf6 ( 3... Bc5 ) 4. d3"#;
 
-    fn pgn1_parsed() -> Game {
-        let mut correct_root_variation = Variation::new_starting_root_variation();
+    fn pgn1_parsed() -> Pgn {
+        let mut root_var = Variation::with_default_capacity(
+            Turn::from_san_with_default_capacity(
+                Chess::new(),
+                &San::from_ascii(b"e4").unwrap(),
+            ).unwrap()
+        );
 
-        push_moves!(
-            correct_root_variation,
-            &San::from_ascii(b"e4").unwrap(),
-            &San::from_ascii(b"e5").unwrap(),
-            &San::from_ascii(b"Nf3").unwrap(),
-            &San::from_ascii(b"Nc6").unwrap(),
-            &San::from_ascii(b"Bc4").unwrap(),
-            &San::from_ascii(b"Nf6").unwrap(),
-            &San::from_ascii(b"d3").unwrap()
+        play_san_strings!(root_var,
+            "e5",
+            "Nf3",
+            "Nc6",
+            "Bc4",
+            "Nf6",
+            "d3"
         ).unwrap();
 
         // SAFETY: 3 is not 0
-        let mut bc5_variation = correct_root_variation.new_variation_at(MoveNumber::from_color_and_number(Color::Black, unsafe { NonZeroU16::new_unchecked(3) }), 1).unwrap();
+        let mut bc5_variation = root_var.new_variation_at(MoveNumber::from_color_and_number(Color::Black, unsafe { NonZeroU16::new_unchecked(3) }), 1).unwrap();
+        let nf6_turn = root_var.get_turn_mut(MoveNumber::from_color_and_number(Color::Black, unsafe { NonZeroU16::new_unchecked(3) }).index as usize).unwrap();
+        let mut bc5_var = Variation::new(Turn::from_san(nf6_turn.position(), &San::from_ascii(b"Bc5").unwrap(), 1).unwrap(), 0);
+
+        root_var.get_turn_mut(
+            MoveNumber::from_color_and_number(Color::Black, unsafe { NonZeroU16::new_unchecked(3) }).index as usize
+        );
 
         //println!("Bc5 var pos: {:?}", bc5_variation.starting_position());
 
         bc5_variation.push_move(&San::from_ascii(b"Bc5").unwrap()).unwrap();
 
-        let mut d4_variation = correct_root_variation.new_variation_at(MoveNumber { index: 0 }, 2).unwrap();
+        let mut d4_variation = root_var.new_variation_at(MoveNumber { index: 0 }, 2).unwrap();
 
-        push_moves!(
+        play_moves!(
             d4_variation,
             &San::from_ascii(b"d4").unwrap(),
             &San::from_ascii(b"d5").unwrap()
@@ -255,10 +264,10 @@ mod tests {
 
         f5_variation.push_move(&San::from_ascii(b"f5").unwrap()).unwrap();
         d4_variation.insert_variation(f5_variation);
-        correct_root_variation.insert_variation(d4_variation);
-        correct_root_variation.insert_variation(bc5_variation);
+        root_var.insert_variation(d4_variation);
+        root_var.insert_variation(bc5_variation);
 
-        Game {
+        Pgn {
             event: Some("Let's Play!".to_string()),
             site: Some("Chess.com".to_string()),
             date: Some(Date::new(Some(2024), Some(unsafe { NonZeroU8::new_unchecked(2) }), Some(unsafe { NonZeroU8::new_unchecked(14) })).unwrap()),
@@ -270,14 +279,14 @@ mod tests {
             black_elo: Some(1565),
             eco: Some(Eco::new(EcoCategory::C, 50).unwrap()),
             time_control: Some("600+0".to_string()),
-            root_variation: Some(correct_root_variation),
+            root_variation: Some(root_var),
         }
     }
 
-    fn pgn2_parsed() -> Game {
+    fn pgn2_parsed() -> Pgn {
         let mut correct_variation = Variation::new_starting_root_variation();
 
-        push_moves!(
+        play_moves!(
             correct_variation,
             &San::from_ascii(b"g4").unwrap(),
             &San::from_ascii(b"e5").unwrap(),
@@ -285,7 +294,7 @@ mod tests {
             &San::from_ascii(b"Qh4").unwrap()
         ).unwrap();
 
-        Game {
+        Pgn {
             event: Some("Live Chess".to_string()),
             site: Some("Lichess".to_string()),
             date: Some(Date::new(Some(2024), Some(unsafe { NonZeroU8::new_unchecked(2) }), None).unwrap()),
@@ -301,14 +310,14 @@ mod tests {
         }
     }
 
-    fn pgn3_parsed() -> Game {
+    fn pgn3_parsed() -> Pgn {
         let mut correct_root_variation = Variation::new_starting_root_variation();
 
         correct_root_variation.push_move(&San::from_ascii(b"e4").unwrap()).unwrap();
 
         let mut d4_variation = correct_root_variation.new_variation_at_last_move(2);
 
-        push_moves!(
+        play_moves!(
             d4_variation,
             &San::from_ascii(b"d4").unwrap(),
             &San::from_ascii(b"d5").unwrap()
@@ -316,7 +325,7 @@ mod tests {
 
         let mut f5_variation = d4_variation.new_variation_at_last_move(3);
 
-        push_moves!(
+        play_moves!(
             f5_variation,
             &San::from_ascii(b"f5").unwrap(),
             &San::from_ascii(b"g3").unwrap(),
@@ -325,7 +334,7 @@ mod tests {
 
         let mut c4_variation = f5_variation.new_variation_at(MoveNumber::from_color_and_number(Color::White, NonZeroU16::new(2).unwrap()), 5).unwrap();
 
-        push_moves!(
+        play_moves!(
             c4_variation,
             &San::from_ascii(b"c4").unwrap(),
             &San::from_ascii(b"Nf6").unwrap(),
@@ -338,7 +347,7 @@ mod tests {
 
         g6_variation.push_move(&San::from_ascii(b"g6").unwrap()).unwrap();
 
-        push_moves!(
+        play_moves!(
             correct_root_variation,
             &San::from_ascii(b"e5").unwrap(),
             &San::from_ascii(b"Nf3").unwrap(),
@@ -358,7 +367,7 @@ mod tests {
         correct_root_variation.insert_variation(d4_variation);
         correct_root_variation.insert_variation(bc5_variation);
 
-        Game {
+        Pgn {
             event: None,
             site: None,
             date: Some(Date::new(None, Some(unsafe { NonZeroU8::new_unchecked(1) }), None).unwrap()),
@@ -377,18 +386,18 @@ mod tests {
     #[test_case(PGN1, Ok(pgn1_parsed()))]
     #[test_case(PGN2, Ok(pgn2_parsed()))]
     #[test_case(PGN3, Ok(pgn3_parsed()))]
-    fn to_pgn_from_pgn(pgn: &str, correct_game: Result<Game, GameFromPgnError>) {
+    fn to_pgn_from_pgn(pgn: &str, correct_game: Result<Pgn, PgnParseError>) {
         match correct_game {
             Ok(game) => {
                 assert_eq!(game.to_pgn(), pgn);
-                assert_eq!(Game::from_str(pgn).first().unwrap().as_ref().unwrap(), &game);
+                assert_eq!(Pgn::from_str(pgn).first().unwrap().as_ref().unwrap(), &game);
             },
             Err(e) => {
-                const fn similar_error(e: &GameFromPgnError, e2: &GameFromPgnError) -> bool {
-                    matches!((e, e2), (GameFromPgnError::Io(_), GameFromPgnError::Io(_)) | (GameFromPgnError::SanError(_), GameFromPgnError::SanError(_)))
+                const fn similar_error(e: &PgnParseError, e2: &PgnParseError) -> bool {
+                    matches!((e, e2), (PgnParseError::Io(_), PgnParseError::Io(_)) | (PgnParseError::SanError(_), PgnParseError::SanError(_)))
                 }
 
-                let try_game = Game::from_str(pgn);
+                let try_game = Pgn::from_str(pgn);
                 let try_game = try_game.first().unwrap().as_ref();
                 dbg!("try_game: {try_game:#?}");
                 dbg!("e: {e:#?}");
@@ -403,7 +412,7 @@ mod tests {
         let mut reader = BufferedReader::new_cursor(PGN1.to_string() + "\n" + PGN2 + "\n" + PGN3);
         
         assert_eq!(
-            &Game::from_reader(&mut reader).into_iter().filter_map(Result::ok).collect::<Vec<_>>(),
+            &Pgn::from_reader(&mut reader).into_iter().filter_map(Result::ok).collect::<Vec<_>>(),
             &[pgn1_parsed(), pgn2_parsed(), pgn3_parsed()]
         );
     }

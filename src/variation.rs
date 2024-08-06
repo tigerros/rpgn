@@ -1,165 +1,263 @@
+use std::borrow::Cow;
 use std::collections::BTreeMap;
+use std::env::var;
 use std::fmt::Debug;
-use shakmaty::{Chess, Move, Position};
+use std::iter::once;
+use shakmaty::{Chess, Move, PlayError, Position};
 use shakmaty::san::{San, SanError};
 use crate::MoveNumber;
+use crate::Turn;
 
-#[derive(Debug, Clone)]
-pub struct SanErrorWithMoveNumber(pub SanError, pub MoveNumber);
-
-/// An always legal variation.
+/// An always legal variation with a history of [`Turn`]s.
+///
+/// That's why there is no `insert(i, turn)` function, because that would invalidate the turns after `i`.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Variation {
-    moves: Vec<(Move, Chess)>,
-    variations: BTreeMap<MoveNumber, Self>,
-    move_number: MoveNumber,
-    starting_position: Chess,
+    first_turn: Turn,
+    tail_turns: Vec<Turn>,
+    first_position: Chess,
+}
+
+#[derive(Debug)]
+pub enum PushVariationError {
+    NoSuchTurn { index: usize },
+    PlayError(PlayError<Chess>)
+}
+
+pub struct VariationPlayError<'variation> {
+    pub position: &'variation Chess,
+    pub r#move: Move,
 }
 
 impl Variation {
-    /// Use [`Self::new_variation_at`] for subvariations.
-    pub fn new_root_variation(move_number: MoveNumber, starting_position: Chess, moves_capacity: usize) -> Self {
+    pub fn new(first_turn: Turn, tail_turns_capacity: usize) -> Self {
         Self {
-            moves: Vec::with_capacity(moves_capacity),
-            variations: BTreeMap::new(),
-            move_number,
-            starting_position,
+            first_turn: first_turn.clone(),
+            tail_turns: Vec::with_capacity(tail_turns_capacity),
+            first_position: first_turn.position().clone()
         }
     }
-    
-    /// Creates a new root variation with the starting move number (white to move - 1) and starting position.
-    pub fn new_starting_root_variation() -> Self {
-        Self::new_root_variation(MoveNumber::MIN, Chess::new(), 100)
+
+    /// Uses 100 for the tail turns capacity.
+    pub fn with_default_capacity(first_turn: Turn) -> Self {
+        Self {
+            first_turn: first_turn.clone(),
+            tail_turns: Vec::with_capacity(100),
+            first_position: first_turn.position().clone()
+        }
     }
-    
-    /// Returns [`None`] if the `move_number` argument doesn't match any moves in the variation.
-    pub fn new_variation_at(&self, move_number: MoveNumber, moves_capacity: usize) -> Option<Self> {
-        if move_number.index == 0 {
-            Some(Self::new_root_variation(move_number, self.starting_position.clone(), moves_capacity))
+
+    /// The first turn + the tail turns.
+    pub fn turns(&self) -> impl Iterator<Item = &Turn> {
+        once(&self.first_turn).chain(self.tail_turns.iter())
+    }
+
+    /// This will treat the first turn and the tail turns as one list.
+    /// Therefore, an index of 0 will yield the first turn, and a greater index will yield `tail_turnns.get(index - 1)`.
+    pub fn get_turn(&self, index: usize) -> Option<&Turn> {
+        if index == 0 {
+            Some(&self.first_turn)
         } else {
-            // CLIPPY: If the arithmetic and as conversions return some bogus, then `.get` will return `None` and all is well.
-            #[allow(clippy::arithmetic_side_effects)]
-            #[allow(clippy::as_conversions)]
-            Some(Self::new_root_variation(move_number, self.moves.get((move_number.index - self.move_number.index - 1) as usize)?.1.clone(), moves_capacity))
+            self.tail_turns.get(index - 1)
         }
     }
 
-    #[must_use]
-    /// Creates a variation based on the position *before* the last move was played.
-    pub fn new_variation_at_last_move(&self, moves_capacity: usize) -> Self {
-        self.last_move_number()
-            .index
-            .checked_sub(1)
-            .map_or_else(|| Self::new_root_variation(MoveNumber { index: 0 }, self.starting_position.clone(), moves_capacity),
-                         |last_move_number_sub1|
-                             self.moves
-                                 .len()
-                                 .checked_sub(2)
-                                 .map_or_else(||
-                                                  Self::new_root_variation(MoveNumber { index: last_move_number_sub1 }, self.starting_position.clone(), moves_capacity),
-                                              |moves_len_sub2|
-                                                  Self::new_root_variation(MoveNumber { index: last_move_number_sub1 }, self.moves.get(moves_len_sub2).map_or(self.starting_position.clone(), |m| m.1.clone()), moves_capacity)))
-    }
-
-    /// A vector of moves and the position that occurs in the variation *after* the move is played.
-    pub const fn moves(&self) -> &Vec<(Move, Chess)> {
-        &self.moves
-    }
-
-    pub const fn variations(&self) -> &BTreeMap<MoveNumber, Self> {
-        &self.variations
-    }
-
-    /// The position before any move in the variation was played.
-    pub const fn starting_position(&self) -> &Chess {
-        &self.starting_position
-    }
-
-    pub fn last_position(&self) -> &Chess {
-        self.moves.last().map_or(&self.starting_position, |m| &m.1)
-    }
-
-    /// The `move_number` of the first move in the variation.
-    pub const fn move_number(&self) -> MoveNumber {
-        self.move_number
-    }
-    
-    pub fn last_move_number(&self) -> MoveNumber {
-        // CLIPPY: There's never going to be so many moves that this overflows or truncates.
-        #[allow(clippy::arithmetic_side_effects)]
-        #[allow(clippy::as_conversions)]
-        #[allow(clippy::cast_possible_truncation)]
-        {
-            MoveNumber { index: self.move_number.index + self.moves.len() as u16 }
+    /// See [`get_turn`].
+    pub fn get_turn_mut(&mut self, index: usize) -> Option<&mut Turn> {
+        if index == 0 {
+            Some(&mut self.first_turn)
+        } else {
+            self.tail_turns.get_mut(index - 1)
         }
     }
 
-    /// Like [`Vec::push`], but checks if the new move is valid.
-    /// 
-    /// # Errors
-    /// 
-    /// The given SAN is an illegal move.
-    pub fn push_move(&mut self, san: &San) -> Result<(), SanError> {
-        let end_position = self.moves.last().map_or(&self.starting_position, |m| &m.1);
+    pub const fn first_turn(&self) -> &Turn {
+        &self.first_turn
+    }
+
+    pub fn first_turn_mut(&mut self) -> &mut Turn {
+        &mut self.first_turn
+    }
+
+    /// Gets the last turn in the tail or the first turn if the tail is empty.
+    pub fn last_turn(&self) -> &Turn {
+        &self.tail_turns.last().unwrap_or(&self.first_turn)
+    }
+
+    /// See [`last_turn`].
+    pub fn last_turn_mut(&mut self) -> &mut Turn {
+        if let Some(last) = self.tail_turns.last_mut() {
+            last
+        } else {
+            &mut self.first_turn
+        }
+    }
+
+    /// The turns that follow after the first turn.
+    pub const fn tail_turns(&self) -> &Vec<Turn> {
+        &self.tail_turns
+    }
+
+    /// Attempts to play a move in the last position.
+    pub fn play(&mut self, r#move: Move) -> Result<(), VariationPlayError> {
+        let last_position = self.last_turn().position();
         
-        match san.to_move(end_position) {
-            Ok(r#move) => {
-                let mut end_position = end_position.clone();
-                end_position.play_unchecked(&r#move);
-                self.moves.push((r#move, end_position));
-                Ok(())
-            },
-            Err(e) => Err(e),
+        if !last_position.is_legal(&r#move) {
+            return Err(VariationPlayError {
+                position: self.last_turn().position(),
+                r#move
+            });
+        }
+
+        let mut new_position = last_position.clone();
+        new_position.play_unchecked(&r#move);
+
+        self.tail_turns.push(Turn::with_default_capacity(new_position, r#move));
+
+        Ok(())
+    }
+
+    /// Attempts to convert a SAN to a valid move in the last position.
+    pub fn play_san(&mut self, san: San) -> Result<(), SanError> {
+        let last_position = self.last_turn().position();
+        let r#move = san.to_move(last_position)?;
+        let mut new_position = last_position.clone();
+
+        // This is safe because `San::to_move` guarantees legality.
+        new_position.play_unchecked(&r#move);
+
+        Ok(())
+    }
+
+    pub fn last_position(&self) -> Cow<Chess> {
+        if self.tail_turns.is_empty() {
+            return Cow::Borrowed(&self.first_position);
+        }
+
+        let mut last_position = self.first_position.clone();
+
+        for r#move in &self.tail_turns {
+            let Turn { played_move: r#move, .. } = r#move;
+            
+            last_position.play_unchecked(&r#move);
+        }
+        
+        Cow::Owned(last_position)
+    }
+
+    pub fn play2(&mut self, r#move: Move) -> Result<(), VariationPlayError> {
+        let last_position = self.last_position();
+        
+        if last_position.is_legal(&r#move) {
+            self.tail_turns.push(Turn::with_default_capacity(Chess::new(), r#move));
+            Ok(())
+        } else {
+            Err(VariationPlayError {
+                position: self.last_turn().position(),
+                r#move
+            })
         }
     }
 
-    /// Removing the last move is the only option, because removing a move in the middle would invalidate the moves after.
-    pub fn pop_move(&mut self) -> Option<(Move, Chess)> {
-        self.moves.pop()
-    }
+    // /// Attempts to play a move at the specified index.
+    // /// This is like an `insert` function, but it will remove all the turns
+    // pub fn play_at(&mut self, index: usize, r#move: Move) -> Result<(), PlayError<Chess>> {
+    //
+    // }
 
-    pub fn insert_variation(&mut self, variation: Self) -> Option<Self> {
-        self.variations.insert(variation.move_number, variation)
-    }
-
-    pub fn remove_variation(&mut self, move_number: MoveNumber) -> Option<Self> {
-        self.variations.remove(&move_number)
-    }
-
-    pub fn get_variation(&self, move_number: MoveNumber) -> Option<&Self> {
-        self.variations.get(&move_number)
+    /// Removes the last turn from the tail.
+    pub fn pop(&mut self) -> Option<Turn> {
+        self.tail_turns.pop()
     }
     
-    pub fn move_at(&self, move_number: MoveNumber) -> Option<&(Move, Chess)> {
-        // CLIPPY: If this arithmetic returns something bogus then `.get` will return `None` and all is well.
-        #[allow(clippy::arithmetic_side_effects)]
-        #[allow(clippy::as_conversions)]
-        {
-            self.moves.get((move_number.index - self.move_number.index) as usize)
-        }
+    pub fn push_variation_at(&mut self, index: usize, variation: Self) -> Result<(), PushVariationError> {
+        self
+            .get_turn_mut(index)
+            .ok_or(PushVariationError::NoSuchTurn { index })?
+            .push_variation(variation)
+            .map_err(PushVariationError::PlayError)?;
+
+        Ok(())
     }
 }
 
-/// Pushes the given moves to the variation, returning the first error.
+/// Plays the given moves in the variation, returning the first error.
 ///
-/// Syntax: `push_moves!(variation, move1, move2)`.
+/// Syntax: `play_moves!(variation, move1, move2, ..)`.
 #[macro_export]
-macro_rules! push_moves {
+macro_rules! play_moves {
     ($variation:expr, $($r#move:expr),*) => {
         {
-            fn push_moves(variation: &mut Variation) -> Result<(), SanError> {
+            use ::shakmaty::{PlayError, Chess};
+            use $crate::Variation;
+            fn play_moves(variation: &mut Variation) -> Result<(), PlayError<Chess>> {
                 $(
-                variation.push_move($r#move)?;
+                variation.play($r#move)?;
                 )*
                 
                 Ok(())
             }
             
-            push_moves(&mut $variation)
+            play_moves(&mut $variation)
+        }
+    };
+}
+
+/// Plays the given SANs in the variation, returning the first error.
+///
+/// Syntax: `play_sans!(variation, san1, san2, ..)`.
+#[macro_export]
+macro_rules! play_sans {
+    ($variation:expr, $($san:expr),*) => {
+        {
+            use ::shakmaty::san::SanError;
+            use $crate::Variation;
+            fn play_sans(variation: &mut Variation) -> Result<(), SanError> {
+                $(
+                variation.play_san($san)?;
+                )*
+
+                Ok(())
+            }
+
+            play_sans(&mut $variation)
+        }
+    };
+}
+
+/// Plays the given SAN strings in the variation, returning the first error.
+///
+/// Syntax: `play_san_strings!(variation, san_string1, san_string2, ..)`.
+///
+/// # Panics
+///
+/// Panics if the strings are not correctly formatted SANs.
+/// Will not panic if the SAN isn't legal as long as it is correctly formatted.
+macro_rules! play_san_strings {
+    ($variation:expr, $($san_string:expr),*) => {
+        {
+            use ::shakmaty::san::SanError;
+            use ::std::str::FromStr;
+            use $crate::Variation;
+            fn play_sans(variation: &mut Variation) -> Result<(), SanError> {
+                $(
+                variation.play_san(San::from_str($san_string).unwrap())?;
+                )*
+
+                Ok(())
+            }
+
+            play_sans(&mut $variation)
         }
     };
 }
 
 // This is used in tests.
 #[allow(unused_imports)]
-pub(crate) use push_moves;
+pub(crate) use play_moves;
+// This is used in tests.
+#[allow(unused_imports)]
+pub(crate) use play_sans;
+// This is used in tests.
+#[allow(unused_imports)]
+pub(crate) use play_san_strings;
