@@ -36,7 +36,6 @@ impl Game {
     /// These are errors for every item in the `Vec`. This function does not error itself.
     ///
     /// - [`GameFromPgnError::Io`]: an IO error occurred.
-    /// - [`GameFromPgnError::EmptyReader`]: the string is empty.
     /// - [`GameFromPgnError::SanError`]: there is an illegal SAN in the PGN.
     pub fn from_str(pgn: &str) -> Vec<Result<Self, GameFromPgnError>> {
         let mut reader = pgn_reader::BufferedReader::new_cursor(pgn);
@@ -54,7 +53,6 @@ impl Game {
     /// These are errors for every item in the `Vec`. This function does not error itself.
     ///
     /// - [`GameFromPgnError::Io`]: an IO error occurred.
-    /// - [`GameFromPgnError::EmptyReader`]: the string is empty.
     /// - [`GameFromPgnError::SanError`]: there is an illegal SAN in the PGN.
     pub fn from_reader<R>(reader: &mut BufferedReader<R>) -> Vec<Result<Self, GameFromPgnError>> where R: Read {
         let mut games = Vec::new();

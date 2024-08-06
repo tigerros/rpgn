@@ -72,7 +72,7 @@ impl Display for Date {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum GameDateParseError {
+pub enum DateParseError {
     MissingYear,
     MissingMonth,
     MissingDay,
@@ -80,7 +80,7 @@ pub enum GameDateParseError {
 }
 
 impl FromStr for Date {
-    type Err = GameDateParseError;
+    type Err = DateParseError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let mut split = s.split('.');
