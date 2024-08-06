@@ -2,10 +2,10 @@ use std::io::Read;
 use pgn_reader::BufferedReader;
 use shakmaty::san::{San, SanPlus, Suffix};
 use super::visitor::Visitor;
-use crate::{Eco, pgn::{Outcome, Date, Round}, MoveNumber, SanErrorWithMoveNumber, Variation, Turn};
+use crate::{Eco, game::{Outcome, Date, Round}, MoveNumber, SanErrorWithMoveNumber, Variation, Turn};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Pgn {
+pub struct Game {
     pub event: Option<String>,
     pub site: Option<String>,
     pub date: Option<Date>,
@@ -27,7 +27,7 @@ pub enum PgnParseError {
     SanError(SanErrorWithMoveNumber)
 }
 
-impl Pgn {
+impl Game {
     #[allow(clippy::should_implement_trait)]
     /// Reads all games in this string.
     ///
@@ -40,7 +40,7 @@ impl Pgn {
     /// - [`PgnParseError::SanError`]: there is an illegal SAN in the PGN.
     pub fn from_str(pgn: &str) -> Vec<Result<Self, PgnParseError>> {
         let mut reader = pgn_reader::BufferedReader::new_cursor(pgn);
-       
+        
         Self::from_reader(&mut reader)
     }
     
@@ -80,7 +80,7 @@ impl Pgn {
 
     pub fn to_pgn(&self) -> String {
         fn push_moves_and_variations(mut move_number: MoveNumber, variation: &Variation, mut very_first_move: bool, pgn: &mut String) {
-            for turn in variation.turns() {
+            for turn in variation.tail_turns() {
                 let Turn { move_played, position, variations: subvariations } = turn;
                 if very_first_move {
                     very_first_move = false;
@@ -221,8 +221,10 @@ mod tests {
 
 1. e4 ( 1. d4 1... d5 ( 1... f5 2. g3 ( 2. c4 2... Nf6 3. Nc3 3... e6 ( 3... g6 ) 4. Nf3 ) 2... Nf6 ) ) 1... e5 2. Nf3 2... Nc6 3. Bc4 3... Nf6 ( 3... Bc5 ) 4. d3"#;
 
-    fn pgn1_parsed() -> Pgn {
+    fn pgn1_parsed() -> Game {
         let mut root_var = Variation::with_default_capacity(
+            Chess::new(),
+            &San::from_ascii(b"e4")
             Turn::from_san_with_default_capacity(
                 Chess::new(),
                 &San::from_ascii(b"e4").unwrap(),
@@ -267,7 +269,7 @@ mod tests {
         root_var.insert_variation(d4_variation);
         root_var.insert_variation(bc5_variation);
 
-        Pgn {
+        Game {
             event: Some("Let's Play!".to_string()),
             site: Some("Chess.com".to_string()),
             date: Some(Date::new(Some(2024), Some(unsafe { NonZeroU8::new_unchecked(2) }), Some(unsafe { NonZeroU8::new_unchecked(14) })).unwrap()),
@@ -283,7 +285,7 @@ mod tests {
         }
     }
 
-    fn pgn2_parsed() -> Pgn {
+    fn pgn2_parsed() -> Game {
         let mut correct_variation = Variation::new_starting_root_variation();
 
         play_moves!(
@@ -294,7 +296,7 @@ mod tests {
             &San::from_ascii(b"Qh4").unwrap()
         ).unwrap();
 
-        Pgn {
+        Game {
             event: Some("Live Chess".to_string()),
             site: Some("Lichess".to_string()),
             date: Some(Date::new(Some(2024), Some(unsafe { NonZeroU8::new_unchecked(2) }), None).unwrap()),
@@ -310,7 +312,7 @@ mod tests {
         }
     }
 
-    fn pgn3_parsed() -> Pgn {
+    fn pgn3_parsed() -> Game {
         let mut correct_root_variation = Variation::new_starting_root_variation();
 
         correct_root_variation.push_move(&San::from_ascii(b"e4").unwrap()).unwrap();
@@ -367,7 +369,7 @@ mod tests {
         correct_root_variation.insert_variation(d4_variation);
         correct_root_variation.insert_variation(bc5_variation);
 
-        Pgn {
+        Game {
             event: None,
             site: None,
             date: Some(Date::new(None, Some(unsafe { NonZeroU8::new_unchecked(1) }), None).unwrap()),
@@ -386,18 +388,18 @@ mod tests {
     #[test_case(PGN1, Ok(pgn1_parsed()))]
     #[test_case(PGN2, Ok(pgn2_parsed()))]
     #[test_case(PGN3, Ok(pgn3_parsed()))]
-    fn to_pgn_from_pgn(pgn: &str, correct_game: Result<Pgn, PgnParseError>) {
+    fn to_pgn_from_pgn(pgn: &str, correct_game: Result<Game, PgnParseError>) {
         match correct_game {
             Ok(game) => {
                 assert_eq!(game.to_pgn(), pgn);
-                assert_eq!(Pgn::from_str(pgn).first().unwrap().as_ref().unwrap(), &game);
+                assert_eq!(Game::from_str(pgn).first().unwrap().as_ref().unwrap(), &game);
             },
             Err(e) => {
                 const fn similar_error(e: &PgnParseError, e2: &PgnParseError) -> bool {
                     matches!((e, e2), (PgnParseError::Io(_), PgnParseError::Io(_)) | (PgnParseError::SanError(_), PgnParseError::SanError(_)))
                 }
 
-                let try_game = Pgn::from_str(pgn);
+                let try_game = Game::from_str(pgn);
                 let try_game = try_game.first().unwrap().as_ref();
                 dbg!("try_game: {try_game:#?}");
                 dbg!("e: {e:#?}");
@@ -412,7 +414,7 @@ mod tests {
         let mut reader = BufferedReader::new_cursor(PGN1.to_string() + "\n" + PGN2 + "\n" + PGN3);
         
         assert_eq!(
-            &Pgn::from_reader(&mut reader).into_iter().filter_map(Result::ok).collect::<Vec<_>>(),
+            &Game::from_reader(&mut reader).into_iter().filter_map(Result::ok).collect::<Vec<_>>(),
             &[pgn1_parsed(), pgn2_parsed(), pgn3_parsed()]
         );
     }
