@@ -30,10 +30,13 @@
 )]
 
 mod concat_strings;
+mod variation_builder;
+
 pub(crate) use concat_strings::concat_strings;
 dry_mods::mods! {
     mod pub use move_number,
     variation,
+    variation_builder,
     eco,
     eco_category,
     time_control_field,

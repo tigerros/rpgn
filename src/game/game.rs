@@ -179,7 +179,7 @@ impl Game {
 #[allow(clippy::expect_used)]
 mod tests {
     use shakmaty::{Chess, Color, Move, san::SanError};
-    use crate::{EcoCategory, variation::play_moves};
+    use crate::{EcoCategory, FirstPosition, TailTurnsCapacity, variation::play_moves, VariationsCapacity};
     use super::*;
     use test_case::test_case;
     use pretty_assertions::{assert_eq};
@@ -222,14 +222,12 @@ mod tests {
 1. e4 ( 1. d4 1... d5 ( 1... f5 2. g3 ( 2. c4 2... Nf6 3. Nc3 3... e6 ( 3... g6 ) 4. Nf3 ) 2... Nf6 ) ) 1... e5 2. Nf3 2... Nc6 3. Bc4 3... Nf6 ( 3... Bc5 ) 4. d3"#;
 
     fn pgn1_parsed() -> Game {
-        let mut root_var = Variation::with_default_capacity(
-            Chess::new(),
-            &San::from_ascii(b"e4")
-            Turn::from_san_with_default_capacity(
-                Chess::new(),
-                &San::from_ascii(b"e4").unwrap(),
-            ).unwrap()
-        );
+        let mut root_var = Variation::from_san(
+            FirstPosition::default(),
+            San::from_ascii(b"e4").unwrap(),
+            TailTurnsCapacity::default(),
+            VariationsCapacity::default()
+        ).unwrap();
 
         play_san_strings!(root_var,
             "e5",

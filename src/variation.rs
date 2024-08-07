@@ -1,8 +1,18 @@
 use std::borrow::Cow;
 use std::fmt::Debug;
 use std::ops::Deref;
-use shakmaty::{Chess, Move, Position};
+use shakmaty::{Chess, Move, PlayError, Position};
 use shakmaty::san::{San, SanError};
+
+#[derive(Debug, Clone)]
+pub struct VariationsCapacity(pub usize);
+
+impl Default for VariationsCapacity {
+    /// 3
+    fn default() -> Self {
+        Self(3)
+    }
+}
 
 /// A move that was played and a list of variations.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -12,18 +22,10 @@ pub struct Turn {
 }
 
 impl Turn {
-    pub fn new(move_played: Move, variations_capacity: usize) -> Self {
+    pub fn new(move_played: Move, variations_capacity: VariationsCapacity) -> Self {
         Self {
             played_move: move_played,
-            variations: Vec::with_capacity(variations_capacity)
-        }
-    }
-
-    /// Creates a new [`Turn`] with a `variations` capacity of 2.
-    pub fn with_default_capacity(move_played: Move) -> Self {
-        Self {
-            played_move: move_played,
-            variations: Vec::with_capacity(2)
+            variations: Vec::with_capacity(variations_capacity.0)
         }
     }
 
@@ -33,6 +35,10 @@ impl Turn {
 
     pub fn variations(&self) -> &Vec<Variation> {
         &self.variations
+    }
+
+    pub fn get_variation_mut(&mut self, index: usize) -> Option<&mut Variation> {
+        self.variations.get_mut(index)
     }
 }
 
@@ -64,8 +70,17 @@ pub enum PlayAtError {
 #[derive(Debug, Clone, Copy)]
 pub struct PositionDoesNotMatchError;
 
+/// This is equivalent to [`shakmaty::PlayError`], but with public fields.
+#[derive(Debug, Clone)]
+pub struct PlayError2<P> where P: Position {
+    pub position: P,
+    pub r#move: Move
+}
+
 #[derive(Debug, Copy, Clone)]
-pub struct IllegalMoveError;
+pub struct NoSuchTurnError {
+    pub index: usize
+}
 
 #[derive(Debug)]
 pub struct VariationPlayError {
@@ -73,32 +88,76 @@ pub struct VariationPlayError {
     pub r#move: Move,
 }
 
+#[derive(Debug, Clone)]
+pub struct FirstPosition(pub Chess);
+
+impl Default for FirstPosition {
+    /// [`Chess::new()`]
+    fn default() -> Self {
+        Self(Chess::new())
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct TailTurnsCapacity(pub usize);
+
+impl Default for TailTurnsCapacity {
+    /// 100
+    fn default() -> Self {
+        Self(100)
+    }
+}
+
 impl Variation {
-    /// Errors if the `first_move` is not legal in the `first_position`.
-    pub fn new(first_position: Chess, first_move: Move, turns_capacity: usize) -> Result<Self, IllegalMoveError> {
-        if first_position.is_legal(&first_move) {
+    /// Errors if the `first_turn` is not legal in the `first_position`.
+    pub fn new(first_position: FirstPosition, first_turn: Turn, tail_turns_capacity: TailTurnsCapacity) -> Result<Self, PlayError2<Chess>> {
+        let first_position = first_position.0;
+
+        if first_position.is_legal(&first_turn.played_move) {
             Ok(Self {
                 first_position,
-                first_turn: Turn::with_default_capacity(first_move),
-                tail_turns: Vec::with_capacity(turns_capacity),
+                first_turn,
+                tail_turns: Vec::with_capacity(tail_turns_capacity.0),
             })
         } else {
-            Err(IllegalMoveError)
+            Err(PlayError2 {
+                position: first_position,
+                r#move: first_turn.played_move
+            })
         }
     }
 
-    /// Like [`new`], except `turns_capacity` is set to 100.
-    pub fn with_default_capacity(first_position: Chess, first_move: Move) -> Result<Self, IllegalMoveError> {
-        Self::new(first_position, first_move, 100)
+    /// Errors if the `first_move` is not legal in the `first_position`.
+    ///
+    ///
+    pub fn from_move(first_position: FirstPosition, first_move: Move, tail_turns_capacity: TailTurnsCapacity, variations_capacity: VariationsCapacity) -> Result<Self, PlayError2<Chess>> {
+        let first_position = first_position.0;
+
+        if first_position.is_legal(&first_move) {
+            Ok(Self {
+                first_position,
+                first_turn: Turn::new(first_move, variations_capacity),
+                tail_turns: Vec::with_capacity(tail_turns_capacity.0),
+            })
+        } else {
+            Err(PlayError2 {
+                position: first_position,
+                r#move: first_move
+            })
+        }
     }
-    
-    pub fn from_san(first_position: Chess, first_move: San, turns_capacity: usize) -> Result<Self, SanError> {
+
+    /// Errors if the `first_move` is not legal in the `first_position`.
+    ///
+    ///
+    pub fn from_san(first_position: FirstPosition, first_move: San, tail_turns_capacity: TailTurnsCapacity, variations_capacity: VariationsCapacity) -> Result<Self, SanError> {
+        let first_position = first_position.0;
         let first_move = first_move.to_move(&first_position)?;
 
         Ok(Self {
             first_position,
-            first_turn: Turn::with_default_capacity(first_move),
-            tail_turns: Vec::with_capacity(turns_capacity),
+            first_turn: Turn::new(first_move, variations_capacity),
+            tail_turns: Vec::with_capacity(tail_turns_capacity.0),
         })
     }
 
@@ -108,6 +167,10 @@ impl Variation {
 
     pub fn first_turn(&self) -> &Turn {
         &self.first_turn
+    }
+
+    pub fn first_turn_mut(&mut self) -> &mut Turn {
+        &mut self.first_turn
     }
 
     pub fn tail_turns(&self) -> &Vec<Turn> {
@@ -159,7 +222,7 @@ impl Variation {
         }
     }
 
-    fn last_turn_mut(&mut self) -> &mut Turn {
+    pub fn last_turn_mut(&mut self) -> &mut Turn {
         if let Some(last_turn) = self.tail_turns.last_mut() {
             last_turn
         } else {
@@ -175,7 +238,7 @@ impl Variation {
         }
     }
 
-    fn get_turn_mut(&mut self, index: usize) -> Option<&mut Turn> {
+    pub fn get_turn_mut(&mut self, index: usize) -> Option<&mut Turn> {
         if index == 0 {
             Some(&mut self.first_turn)
         } else {
@@ -184,9 +247,11 @@ impl Variation {
     }
 
     /// Attempts to play a move in the last position.
+    ///
+    /// The variations capacity of the new turn will be [`VariationsCapacity::default`].
     pub fn play(&mut self, r#move: Move) -> Result<(), VariationPlayError> {
         if self.last_position().is_legal(&r#move) {
-            self.tail_turns.push(Turn::with_default_capacity(r#move));
+            self.tail_turns.push(Turn::new(r#move, VariationsCapacity::default()));
             Ok(())
         } else {
             Err(VariationPlayError {
@@ -196,12 +261,29 @@ impl Variation {
         }
     }
 
+    /// Attempts to play a turn in the last position.
+    ///
+    /// You can use this version of [`play`] to control the variations capacity of the turn.
+    pub fn play_turn(&mut self, turn: Turn) -> Result<(), VariationPlayError> {
+        if self.last_position().is_legal(&turn.played_move) {
+            self.tail_turns.push(turn);
+            Ok(())
+        } else {
+            Err(VariationPlayError {
+                at_position: self.tail_turns.len(),
+                r#move: turn.played_move
+            })
+        }
+    }
+
     /// Attempts to convert a SAN to a valid move in the last position, and plays it.
-    pub fn play_san(&mut self, san: San) -> Result<(), SanError> {
+    ///
+    /// The variations capacity of the new turn will be [`VariationsCapacity::default`].
+    pub fn play_san(&mut self, san: &San) -> Result<(), SanError> {
         let last_position = self.last_position();
         let r#move = san.to_move(last_position.deref())?;
 
-        self.tail_turns.push(Turn::with_default_capacity(r#move));
+        self.tail_turns.push(Turn::new(r#move, VariationsCapacity::default()));
 
         Ok(())
     }
@@ -238,6 +320,8 @@ impl Variation {
     }
 
     /// Adds a variation to the last turn.
+    /// 
+    /// The new variation must have the same starting position as this variation's last position.
     pub fn push_variation(&mut self, variation: Self) -> Result<(), PositionDoesNotMatchError> {
         if variation.first_position == *self.last_position() {
             self.last_turn_mut().variations.push(variation);
@@ -247,11 +331,13 @@ impl Variation {
             Err(PositionDoesNotMatchError)
         }
     }
-    
+
+    /// Inserts a variation to the turn at the specified index.
+    /// 
+    /// The new variation must have the same starting position as this variation's position at `index`.
     pub fn insert_variation(&mut self, index: usize, variation: Self) -> Result<(), InsertVariationError> {
         if variation.first_position == *self.get_position(index).ok_or(InsertVariationError::NoSuchTurn { index })? {
-            self.tail_turns
-                .get_mut(index)
+            self.get_turn_mut(index)
                 .ok_or(InsertVariationError::NoSuchTurn { index })?
                 .variations
                 .push(variation);
@@ -259,6 +345,19 @@ impl Variation {
             Ok(())
         } else {
             Err(InsertVariationError::PositionDoesNotMatch)
+        }
+    }
+
+    pub fn insert_empty_variation(&mut self, index: usize) -> Result<&mut Variation, NoSuchTurnError> {
+        let position_at_index = self.get_position(index).ok_or(NoSuchTurnError { index })?;
+
+        // CLIPPY: `get_position` verifies that a turn exists at that index too.
+        #[allow(clippy::unwrap_used)]
+        {
+            self.get_turn_mut(index)
+                .unwrap()
+                .variations
+                .push(Variation::from_move(FirstPosition(position_at_index), ).unwrap())
         }
     }
 }
@@ -323,7 +422,7 @@ macro_rules! play_san_strings {
             use $crate::Variation;
             fn play_sans(variation: &mut Variation) -> Result<(), SanError> {
                 $(
-                variation.play_san(San::from_str($san_string).unwrap())?;
+                variation.play_san(&San::from_str($san_string).unwrap())?;
                 )*
 
                 Ok(())
