@@ -56,9 +56,9 @@ fn main() {
     let game = Game::from_str(PGN2);
     let elapsed = start.elapsed().as_micros();
     println!("From PGN elapsed: {elapsed:?} micros");
-    let var = game.first().unwrap().as_ref().unwrap().clone().root_variation.unwrap();
+    let game = game.first().unwrap().as_ref().unwrap();
     let start = Instant::now();
-    let _ = var.to_string();
+    let _ = game.to_pgn();
     let elapsed = start.elapsed().as_micros();
     println!("From PGN elapsed: {elapsed:?} micros");
 }
