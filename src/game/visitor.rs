@@ -2,7 +2,7 @@ use pgn_reader::{RawHeader, Skip};
 use std::str::FromStr;
 use shakmaty::Chess;
 use shakmaty::san::SanPlus;
-use crate::{Variation, MoveNumber, Eco, game::{Date, Round, Outcome, Game}, SanErrorWithMoveNumber, TurnsCapacity};
+use crate::{Variation, MoveNumber, Eco, game::{Date, Round, Outcome, Game}, SanErrorWithMoveNumber, TurnsCapacity, Turn, VariationsCapacity};
 
 pub(super) struct Visitor {
     event: Option<String>,
@@ -16,7 +16,7 @@ pub(super) struct Visitor {
     outcome: Option<Outcome>,
     eco: Option<Eco>,
     time_control: Option<String>,
-    current_variation_tree: Vec<Variation>,
+    variation_tree: Vec<Variation>,
     current_move_number: MoveNumber,
     root_variation: Variation,
     result: Result<(), SanErrorWithMoveNumber>
@@ -36,7 +36,7 @@ impl Visitor {
             outcome: None,
             eco: None,
             time_control: None,
-            current_variation_tree: Vec::with_capacity(0),
+            variation_tree: Vec::with_capacity(0),
             current_move_number: MoveNumber::MIN,
             root_variation: Variation::new(Chess::default(), TurnsCapacity::default()),
             result: Ok(())
@@ -95,16 +95,10 @@ impl pgn_reader::Visitor for Visitor {
             return Skip(true);
         }
 
-        // CLIPPY: There's never going to be u16::MAX moves.
-        #[allow(clippy::arithmetic_side_effects)]
-        {
-            self.current_move_number.index -= 1;
-        }
+        let current_variation = self.variation_tree.last_mut().unwrap_or(&mut self.root_variation);
+        let new_variation = Variation::new(current_variation.last_position().into_owned(), TurnsCapacity(50));
 
-        let current_variation = self.current_variation_tree.last_mut().unwrap_or(&mut self.root_variation);
-        let new_variation = current_variation.new_variation_at_last_move(50);
-
-        self.current_variation_tree.push(new_variation);
+        self.variation_tree.push(new_variation);
 
         Skip(false)
     }
@@ -114,21 +108,14 @@ impl pgn_reader::Visitor for Visitor {
             return;
         }
 
-        // Remove the current variation because it ended, but get the value of it.
-        let Some(current_variation) = self.current_variation_tree.pop() else {
+        // Remove the current variation because it ended, but get the value of it to push to the parent.
+        let Some(current_variation) = self.variation_tree.pop() else {
             return;
         };
 
-        let current_variation_move_number = current_variation.move_number();
-        // CLIPPY: There's never going to be u16::MAX moves.
-        #[allow(clippy::arithmetic_side_effects)]
-        {
-            self.current_move_number = MoveNumber { index: current_variation_move_number.index + 1 };
-        }
+        let current_variation_parent = self.variation_tree.last_mut().unwrap_or(&mut self.root_variation);
 
-        let current_variation_parent = self.current_variation_tree.last_mut().unwrap_or(&mut self.root_variation);
-
-        current_variation_parent.insert_variation(current_variation);
+        current_variation_parent.insert_variation(todo!(), current_variation);
     }
 
     fn san(&mut self, san_plus: SanPlus) {
@@ -136,18 +123,11 @@ impl pgn_reader::Visitor for Visitor {
             return;
         }
 
-        // CLIPPY: There's never going to be u16::MAX moves.
-        #[allow(clippy::arithmetic_side_effects)]
-        {
-            self.current_move_number.index += 1;
-        }
-
-
-        let current_variation = self.current_variation_tree.last_mut().unwrap_or(&mut self.root_variation);
+        let current_variation = self.variation_tree.last_mut().unwrap_or(&mut self.root_variation);
 
         //println!("Current variation position: \n{:?}", current_variation.last_position().board());
 
-        match current_variation.push_move(&san_plus.san) {
+        match current_variation.play_san(&san_plus.san, VariationsCapacity::default()) {
             Ok(()) => (),
             //Ok(()) => println!("Move {} is ok", san_plus.san),
             Err(e) => {

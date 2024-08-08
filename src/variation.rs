@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 use std::fmt::Debug;
 use std::ops::Deref;
-use shakmaty::{Chess, Move, PlayError, Position};
+use shakmaty::{Chess, Move, Position};
 use shakmaty::san::{San, SanError};
 
 #[derive(Debug, Clone)]
