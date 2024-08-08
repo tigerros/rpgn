@@ -167,16 +167,13 @@ impl Variation {
         }
 
         let mut requested_position = self.first_position.clone();
-        let mut turns_traversed = 0;
 
-        for turn in &self.turns {
+        for (turns_traversed, turn) in self.turns.iter().enumerate() {
             if index == turns_traversed {
                 break;
             }
 
             requested_position.play_unchecked(&turn.r#move);
-
-            turns_traversed += 1;
         }
 
         Some(Cow::Owned(requested_position))
