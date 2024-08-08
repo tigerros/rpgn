@@ -4,7 +4,7 @@ use std::ops::Deref;
 use shakmaty::{Chess, Move, Position};
 use shakmaty::san::{San, SanError, SanPlus, Suffix};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct VariationsCapacity(pub usize);
 
 impl Default for VariationsCapacity {
@@ -17,6 +17,7 @@ impl Default for VariationsCapacity {
 /// A move that was played and a list of variations.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Turn {
+    position_cache: Option<Chess>,
     r#move: Move,
     variations: Vec<Variation>
 }
@@ -29,11 +30,11 @@ impl Turn {
         }
     }
 
-    pub fn r#move(&self) -> &Move {
+    pub const fn r#move(&self) -> &Move {
         &self.r#move
     }
 
-    pub fn variations(&self) -> &Vec<Variation> {
+    pub const fn variations(&self) -> &Vec<Variation> {
         &self.variations
     }
 
@@ -46,10 +47,10 @@ impl Turn {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Variation {
     first_position: Chess,
-    turns: Vec<Turn>
+    turns: Vec<Turn>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum InsertVariationError {
     NoSuchTurn { index: usize },
     /// The position at the specified index does not match the new variation's starting position.
@@ -93,7 +94,7 @@ pub struct VariationSanPlayError {
     pub error: SanError
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct TurnsCapacity(pub usize);
 
 impl Default for TurnsCapacity {
@@ -111,11 +112,11 @@ impl Variation {
         }
     }
 
-    pub fn first_position(&self) -> &Chess {
+    pub const fn first_position(&self) -> &Chess {
         &self.first_position
     }
 
-    pub fn turns(&self) -> &Vec<Turn> {
+    pub const fn turns(&self) -> &Vec<Turn> {
         &self.turns
     }
 
