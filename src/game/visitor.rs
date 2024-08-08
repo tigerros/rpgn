@@ -103,7 +103,7 @@ impl pgn_reader::Visitor for Visitor {
         }
 
         let current_variation = self.variation_tree.last().unwrap_or(&self.root_variation);
-        println!("Beginning var: {:?}", current_variation.position_before_last_move().board());
+        //println!("Beginning var: {:?}", current_variation.position_before_last_move().board());
         let new_variation = Variation::new(current_variation.position_before_last_move().into_owned(), TurnsCapacity(50));
 
         self.variation_tree.push(new_variation);
@@ -123,18 +123,18 @@ impl pgn_reader::Visitor for Visitor {
 
         let current_variation_parent = self.variation_tree.last_mut().unwrap_or(&mut self.root_variation);
         
-        print!("Finishing var: ");
-        
-        for turn_i in 0..current_variation.turns().len() {
-            #[allow(clippy::unwrap_used)]
-            let r#move = current_variation.turns().get(turn_i).unwrap().r#move();
-            #[allow(clippy::unwrap_used)]
-            let position = current_variation.get_position(turn_i).unwrap();
-            
-            print!("{}, ", San::from_move(&*position, r#move));
-        }
-        
-        println!();
+        // print!("Finishing var: ");
+        // 
+        // for turn_i in 0..current_variation.turns().len() {
+        //     #[allow(clippy::unwrap_used)]
+        //     let r#move = current_variation.turns().get(turn_i).unwrap().r#move();
+        //     #[allow(clippy::unwrap_used)]
+        //     let position = current_variation.get_position(turn_i).unwrap();
+        //     
+        //     print!("{}, ", San::from_move(&*position, r#move));
+        // }
+        // 
+        // println!();
         
         // CLIPPY: All error cases are covered. `len - 1` will always be a valid index and the position is correct as assured in `begin_variation`.
         #[allow(clippy::unwrap_used)]
@@ -151,14 +151,14 @@ impl pgn_reader::Visitor for Visitor {
         //println!("Current variation position: \n{:?}", current_variation.last_position().board());
 
         if let Err(error) = current_variation.play_san(&san_plus.san, VariationsCapacity::default()) {
-            println!("Move {} is err", san_plus.san);
+            //println!("Move {} is err", san_plus.san);
             self.result = Err(VisitorSanError {
                 position: current_variation.last_position().into_owned(),
                 san: san_plus.san,
                 error,
             });
         } else {
-            println!("Move {} is ok", san_plus.san)
+            //println!("Move {} is ok", san_plus.san)
         }
     }
 

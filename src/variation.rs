@@ -17,7 +17,6 @@ impl Default for VariationsCapacity {
 /// A move that was played and a list of variations.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Turn {
-    position_cache: Option<Chess>,
     r#move: Move,
     variations: Vec<Variation>
 }
