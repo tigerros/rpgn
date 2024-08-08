@@ -100,7 +100,7 @@ impl pgn_reader::Visitor for Visitor {
             self.current_move_number.index -= 1;
         }
 
-        let current_variation = self.current_variation_tree.last_mut().unwrap_or(&mut self.root_variation);
+        let current_variation = self.current_variation_tree.last().unwrap_or(&self.root_variation);
         let new_variation = current_variation.new_variation_at_last_move(50);
 
         self.current_variation_tree.push(new_variation);
