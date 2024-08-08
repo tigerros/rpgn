@@ -1,8 +1,8 @@
 use std::borrow::Cow;
-use std::fmt::Debug;
+use std::fmt::{Debug, Display, Formatter, Write};
 use std::ops::Deref;
 use shakmaty::{Chess, Move, Position};
-use shakmaty::san::{San, SanError};
+use shakmaty::san::{San, SanError, SanPlus, Suffix};
 
 #[derive(Debug, Clone)]
 pub struct VariationsCapacity(pub usize);
@@ -43,9 +43,6 @@ impl Turn {
 }
 
 /// An always legal variation with a history of [`Turn`]s.
-/// 
-/// Internally, it is composed of a first position and first turn fields, and then a tail of turns vector.
-/// However, all functions that accept an "index" as a parameter will treat the first turn and the tail as one list. 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Variation {
     first_position: Chess,
@@ -122,6 +119,9 @@ impl Variation {
         &self.turns
     }
 
+    /// Returns the position that occurs *after* the last move is played.
+    ///
+    /// See also [`Self::position_before_last_move`].
     pub fn last_position(&self) -> Cow<Chess> {
         if self.turns.is_empty() {
             return Cow::Borrowed(&self.first_position);
@@ -130,6 +130,29 @@ impl Variation {
         let mut last_position = self.first_position.clone();
 
         for turn in &self.turns {
+            last_position.play_unchecked(&turn.r#move);
+        }
+
+        Cow::Owned(last_position)
+    }
+
+    /// Returns the position that occurs *before* the last move is played.
+    ///
+    /// This is useful if you want to start a subvariation at the last turn of a variation.
+    ///
+    /// See also [`Self::last_position`].
+    pub fn position_before_last_move(&self) -> Cow<Chess> {
+        if self.turns.is_empty() {
+            return Cow::Borrowed(&self.first_position);
+        }
+
+        let mut last_position = self.first_position.clone();
+
+        for turn_i in 0..self.turns.len() - 1 {
+            // CLIPPY: This for loop ensures the index is within bounds.
+            #[allow(clippy::unwrap_used)]
+            let turn = self.turns.get(turn_i).unwrap();
+            
             last_position.play_unchecked(&turn.r#move);
         }
 
@@ -258,6 +281,55 @@ impl Variation {
     }
 }
 
+fn fmt(f: &mut Formatter<'_>, mut move_number: MoveNumber, variation: &Variation, mut very_first_move: bool) -> std::fmt::Result {
+    for turn_i in 0..variation.turns.len() {
+        // CLIPPY: The above for loop ensures the index is within bounds.
+        #[allow(clippy::unwrap_used)]
+        let Turn { r#move, variations: subvariations } = variation.turns.get(turn_i).unwrap();
+        #[allow(clippy::unwrap_used)]
+        let position = variation.get_position(turn_i).unwrap();
+
+        if very_first_move {
+            very_first_move = false;
+        } else {
+            f.write_char(' ')?;
+        }
+
+        f.write_str(&move_number.number().to_string())?;
+
+        if move_number.color().is_white() {
+            f.write_str(". ")?;
+        } else {
+            f.write_str("... ")?;
+        }
+
+        f.write_str(&SanPlus {
+            san: San::from_move(&*position, r#move),
+            suffix: Suffix::from_position(&*position),
+        }.to_string())?;
+
+        for subvariation in subvariations {
+            f.write_str(" (")?;
+            fmt(f, move_number, subvariation, false)?;
+            f.write_str(" )")?;
+        }
+
+        // CLIPPY: There's never going to be u16::MAX moves.
+        #[allow(clippy::arithmetic_side_effects)]
+        {
+            move_number.index += 1;
+        }
+    }
+
+    Ok(())
+}
+
+impl Display for Variation {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        fmt(f, MoveNumber::MIN, self, true)
+    }
+}
+
 /// Plays the given moves in the variation, returning the first error.
 ///
 /// Syntax: `play_moves!(variation, move1, move2, ..)`.
@@ -318,7 +390,7 @@ macro_rules! play_san_strings {
             use $crate::Variation;
             fn play_sans(variation: &mut Variation) -> Result<(), SanError> {
                 $(
-                variation.play_san(&San::from_str($san_string).unwrap())?;
+                variation.play_san(&San::from_str($san_string).unwrap(), VariationsCapacity::default())?;
                 )*
 
                 Ok(())
@@ -338,3 +410,4 @@ pub(crate) use play_sans;
 // This is used in tests.
 #[allow(unused_imports)]
 pub(crate) use play_san_strings;
+use crate::MoveNumber;

@@ -1,8 +1,15 @@
 use pgn_reader::{RawHeader, Skip};
 use std::str::FromStr;
-use shakmaty::Chess;
-use shakmaty::san::SanPlus;
-use crate::{Variation, MoveNumber, Eco, game::{Date, Round, Outcome, Game}, SanErrorWithMoveNumber, TurnsCapacity, Turn, VariationsCapacity};
+use shakmaty::{Chess, Position};
+use shakmaty::san::{San, SanError, SanPlus};
+use crate::{Variation, MoveNumber, Eco, game::{Date, Round, Outcome, Game}, TurnsCapacity, Turn, VariationsCapacity};
+
+#[derive(Debug, Clone)]
+pub struct VisitorSanError {
+    pub position: Chess,
+    pub san: San,
+    pub error: SanError
+}
 
 pub(super) struct Visitor {
     event: Option<String>,
@@ -19,7 +26,7 @@ pub(super) struct Visitor {
     variation_tree: Vec<Variation>,
     current_move_number: MoveNumber,
     root_variation: Variation,
-    result: Result<(), SanErrorWithMoveNumber>
+    result: Result<(), VisitorSanError>
 }
 
 impl Visitor {
@@ -50,7 +57,7 @@ impl Visitor {
     /// This is done because `pgn_reader`'s `Visitor` trait has a required `end_game`
     /// function, which would ideally return `Game`, but it does not consume the visitor,
     /// so nothing can be moved.
-    pub fn into_game(self) -> Result<Game, SanErrorWithMoveNumber> {
+    pub fn into_game(self) -> Result<Game, VisitorSanError> {
         self.result?;
 
         Ok(Game {
@@ -95,8 +102,9 @@ impl pgn_reader::Visitor for Visitor {
             return Skip(true);
         }
 
-        let current_variation = self.variation_tree.last_mut().unwrap_or(&mut self.root_variation);
-        let new_variation = Variation::new(current_variation.last_position().into_owned(), TurnsCapacity(50));
+        let current_variation = self.variation_tree.last().unwrap_or(&self.root_variation);
+        println!("Beginning var: {:?}", current_variation.position_before_last_move().board());
+        let new_variation = Variation::new(current_variation.position_before_last_move().into_owned(), TurnsCapacity(50));
 
         self.variation_tree.push(new_variation);
 
@@ -114,8 +122,23 @@ impl pgn_reader::Visitor for Visitor {
         };
 
         let current_variation_parent = self.variation_tree.last_mut().unwrap_or(&mut self.root_variation);
-
-        current_variation_parent.insert_variation(todo!(), current_variation);
+        
+        print!("Finishing var: ");
+        
+        for turn_i in 0..current_variation.turns().len() {
+            #[allow(clippy::unwrap_used)]
+            let r#move = current_variation.turns().get(turn_i).unwrap().r#move();
+            #[allow(clippy::unwrap_used)]
+            let position = current_variation.get_position(turn_i).unwrap();
+            
+            print!("{}, ", San::from_move(&*position, r#move));
+        }
+        
+        println!();
+        
+        // CLIPPY: All error cases are covered. `len - 1` will always be a valid index and the position is correct as assured in `begin_variation`.
+        #[allow(clippy::unwrap_used)]
+        current_variation_parent.insert_variation(current_variation_parent.turns().len() - 1, current_variation).unwrap();
     }
 
     fn san(&mut self, san_plus: SanPlus) {
@@ -127,13 +150,15 @@ impl pgn_reader::Visitor for Visitor {
 
         //println!("Current variation position: \n{:?}", current_variation.last_position().board());
 
-        match current_variation.play_san(&san_plus.san, VariationsCapacity::default()) {
-            Ok(()) => (),
-            //Ok(()) => println!("Move {} is ok", san_plus.san),
-            Err(e) => {
-                //println!("Move {} is err", san_plus.san);
-                self.result = Err(SanErrorWithMoveNumber(e, self.current_move_number));
-            }
+        if let Err(error) = current_variation.play_san(&san_plus.san, VariationsCapacity::default()) {
+            println!("Move {} is err", san_plus.san);
+            self.result = Err(VisitorSanError {
+                position: current_variation.last_position().into_owned(),
+                san: san_plus.san,
+                error,
+            });
+        } else {
+            println!("Move {} is ok", san_plus.san)
         }
     }
 
