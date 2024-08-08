@@ -80,7 +80,7 @@ impl Game {
 
     pub fn to_pgn(&self) -> String {
         fn push_moves_and_variations(mut move_number: MoveNumber, variation: &Variation, mut very_first_move: bool, pgn: &mut String) {
-            for turn in variation.tail_turns() {
+            for turn in variation.turns() {
                 let Turn { move_played, position, variations: subvariations } = turn;
                 if very_first_move {
                     very_first_move = false;
@@ -179,7 +179,7 @@ impl Game {
 #[allow(clippy::expect_used)]
 mod tests {
     use shakmaty::{Chess, Color, Move, san::SanError};
-    use crate::{EcoCategory, FirstPosition, TailTurnsCapacity, variation::play_moves, VariationsCapacity};
+    use crate::{EcoCategory, FirstPosition, TurnsCapacity, variation::play_moves, VariationsCapacity};
     use super::*;
     use test_case::test_case;
     use pretty_assertions::{assert_eq};
@@ -225,7 +225,7 @@ mod tests {
         let mut root_var = Variation::from_san(
             FirstPosition::default(),
             San::from_ascii(b"e4").unwrap(),
-            TailTurnsCapacity::default(),
+            TurnsCapacity::default(),
             VariationsCapacity::default()
         ).unwrap();
 

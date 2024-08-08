@@ -1,7 +1,8 @@
 use pgn_reader::{RawHeader, Skip};
 use std::str::FromStr;
+use shakmaty::Chess;
 use shakmaty::san::SanPlus;
-use crate::{Variation, MoveNumber, Eco, game::{Date, Round, Outcome, Game}, SanErrorWithMoveNumber};
+use crate::{Variation, MoveNumber, Eco, game::{Date, Round, Outcome, Game}, SanErrorWithMoveNumber, TurnsCapacity};
 
 pub(super) struct Visitor {
     event: Option<String>,
@@ -37,7 +38,7 @@ impl Visitor {
             time_control: None,
             current_variation_tree: Vec::with_capacity(0),
             current_move_number: MoveNumber::MIN,
-            root_variation: Variation::new_starting_root_variation(),
+            root_variation: Variation::new(Chess::default(), TurnsCapacity::default()),
             result: Ok(())
         }
     }
