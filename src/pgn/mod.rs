@@ -5,4 +5,5 @@ dry_mods::mods! {
     date,
     outcome,
     round;
+    pub mod samples;
 }

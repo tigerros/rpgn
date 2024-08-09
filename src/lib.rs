@@ -37,6 +37,7 @@ dry_mods::mods! {
     variation,
     eco,
     eco_category,
-    time_control_field,
-    pgn;
+    time_control_field;
+    pub mod pgn;
 }
+pub use pgn::{Pgn, PgnParseError};

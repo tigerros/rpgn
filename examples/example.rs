@@ -50,13 +50,7 @@ const PGN2: &str = r#"[Event "Let's Play!"]
 
 
 fn main() {
-    let start = Instant::now();
-    let pgn = Pgn::from_str(PGN2);
-    let elapsed = start.elapsed().as_micros();
-    println!("From PGN elapsed: {elapsed:?} micros");
-    let pgn = pgn.first().unwrap().as_ref().unwrap();
-    let start = Instant::now();
-    let _ = pgn.to_string();
-    let elapsed = start.elapsed().as_micros();
-    println!("To PGN elapsed: {elapsed:?} micros");
+    let pgn = Pgn::from_str(PGN);
+    
+    println!("Parsed PGN: {pgn:#?}");
 }

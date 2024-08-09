@@ -411,10 +411,10 @@ macro_rules! play_sans {
     ($variation:expr, $($san:expr),*) => {
         {
             use ::shakmaty::san::SanError;
-            use $crate::Variation;
+            use $crate::{Variation, VariationsCapacity};
             fn play_sans(variation: &mut Variation) -> Result<(), SanError> {
                 $(
-                variation.play_san($san)?;
+                variation.play_san($san, VariationsCapacity::default())?;
                 )*
 
                 Ok(())
@@ -440,7 +440,7 @@ macro_rules! play_san_strings {
         {
             use ::shakmaty::san::San;
             use ::std::str::FromStr;
-            use $crate::{Variation, VariationSanPlayError};
+            use $crate::{Variation, VariationSanPlayError, VariationsCapacity};
             fn play_sans(variation: &mut Variation) -> Result<(), VariationSanPlayError> {
                 $(
                 variation.play_san(&San::from_str($san_string).unwrap(), VariationsCapacity::default())?;
