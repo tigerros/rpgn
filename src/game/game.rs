@@ -401,7 +401,7 @@ mod tests {
         let mut reader = BufferedReader::new_cursor(PGN1.to_string() + "\n" + PGN2 + "\n" + PGN3);
         
         assert_eq!(
-            &Game::from_reader(&mut reader).into_iter().filter_map(Result::ok).collect::<Vec<_>>(),
+            &Game::from_reader(&mut reader).into_iter().map(Result::unwrap).collect::<Vec<_>>(),
             &[pgn1_parsed(), pgn2_parsed(), pgn3_parsed()]
         );
     }
