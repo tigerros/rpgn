@@ -38,5 +38,5 @@ dry_mods::mods! {
     eco,
     eco_category,
     time_control_field,
-    game;
+    pgn;
 }

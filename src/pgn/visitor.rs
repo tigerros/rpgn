@@ -1,12 +1,12 @@
 use pgn_reader::{RawHeader, Skip};
 use std::str::FromStr;
-use shakmaty::{Chess, Position};
+use shakmaty::Chess;
 use shakmaty::san::{San, SanError, SanPlus};
-use crate::{Variation, MoveNumber, Eco, game::{Date, Round, Outcome, Game}, TurnsCapacity, Turn, VariationsCapacity};
+use crate::{Variation, Eco, pgn::{Date, Round, Outcome, Pgn}, TurnsCapacity, VariationsCapacity};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct VisitorSanError {
-    pub position: Chess,
+    pub move_index: usize,
     pub san: San,
     pub error: SanError
 }
@@ -23,8 +23,8 @@ pub(super) struct Visitor {
     outcome: Option<Outcome>,
     eco: Option<Eco>,
     time_control: Option<String>,
-    variation_tree: Vec<Variation>,
-    current_move_number: MoveNumber,
+    variation_tree: Vec<(usize, Variation)>,
+    current_move_index: usize,
     root_variation: Variation,
     result: Result<(), VisitorSanError>
 }
@@ -44,23 +44,23 @@ impl Visitor {
             eco: None,
             time_control: None,
             variation_tree: Vec::with_capacity(0),
-            current_move_number: MoveNumber::MIN,
+            current_move_index: 0,
             root_variation: Variation::new(Chess::default(), TurnsCapacity::default()),
             result: Ok(())
         }
     }
 
-    /// Moves relevant contents of the visitor into a new `Game`.
+    /// Moves relevant contents of the visitor into a new [`Pgn`].
     ///
-    /// Call this after you visit `GameVisitor` with a reader.
+    /// Call this after you visit [`Visitor`] with a reader.
     ///
     /// This is done because `pgn_reader`'s `Visitor` trait has a required `end_game`
-    /// function, which would ideally return `Game`, but it does not consume the visitor,
+    /// function, which would ideally return [`Pgn`], but it does not consume the visitor,
     /// so nothing can be moved.
-    pub fn into_game(self) -> Result<Game, VisitorSanError> {
+    pub fn into_pgn(self) -> Result<Pgn, VisitorSanError> {
         self.result?;
 
-        Ok(Game {
+        Ok(Pgn {
             event: self.event,
             site: self.site,
             date: self.date,
@@ -102,11 +102,18 @@ impl pgn_reader::Visitor for Visitor {
             return Skip(true);
         }
 
-        let current_variation = self.variation_tree.last().unwrap_or(&self.root_variation);
+        // CLIPPY: There's never going to be usize::MAX moves.
+        #[allow(clippy::arithmetic_side_effects)]
+        {
+            self.current_move_index -= 1;
+        }
+
+        let current_variation = self.variation_tree.last().map_or(&self.root_variation, |pair| &pair.1);
+
         //println!("Beginning var: {:?}", current_variation.position_before_last_move().board());
         let new_variation = Variation::new(current_variation.position_before_last_move().into_owned(), TurnsCapacity(50));
 
-        self.variation_tree.push(new_variation);
+        self.variation_tree.push((self.current_move_index, new_variation));
 
         Skip(false)
     }
@@ -117,11 +124,17 @@ impl pgn_reader::Visitor for Visitor {
         }
 
         // Remove the current variation because it ended, but get the value of it to push to the parent.
-        let Some(current_variation) = self.variation_tree.pop() else {
+        let Some((ending_variation_move_number, ending_variation)) = self.variation_tree.pop() else {
             return;
         };
 
-        let current_variation_parent = self.variation_tree.last_mut().unwrap_or(&mut self.root_variation);
+        let ending_variation_parent = self.variation_tree.last_mut().map_or(&mut self.root_variation, |pair| &mut pair.1);
+
+        // CLIPPY: There's never going to be u16::MAX moves.
+        #[allow(clippy::arithmetic_side_effects)]
+        {
+            self.current_move_index = ending_variation_move_number + 1;
+        }
         
         // print!("Finishing var: ");
         // 
@@ -138,7 +151,7 @@ impl pgn_reader::Visitor for Visitor {
         
         // CLIPPY: All error cases are covered. `len - 1` will always be a valid index and the position is correct as assured in `begin_variation`.
         #[allow(clippy::unwrap_used)]
-        current_variation_parent.insert_variation(current_variation_parent.turns().len() - 1, current_variation).unwrap();
+        ending_variation_parent.insert_variation(ending_variation_parent.turns().len().saturating_sub(1), ending_variation).unwrap();
     }
 
     fn san(&mut self, san_plus: SanPlus) {
@@ -146,18 +159,24 @@ impl pgn_reader::Visitor for Visitor {
             return;
         }
 
-        let current_variation = self.variation_tree.last_mut().unwrap_or(&mut self.root_variation);
+        let current_variation = self.variation_tree.last_mut().map(|pair| &mut pair.1).unwrap_or(&mut self.root_variation);
 
         //println!("Current variation position: \n{:?}", current_variation.last_position().board());
 
         if let Err(error) = current_variation.play_san(&san_plus.san, VariationsCapacity::default()) {
             //println!("Move {} is err", san_plus.san);
             self.result = Err(VisitorSanError {
-                position: current_variation.last_position().into_owned(),
+                move_index: self.current_move_index,
+                //position: current_variation.last_position().into_owned(),
                 san: san_plus.san,
-                error,
+                error: error.error,
             });
         } else {
+            // CLIPPY: There's never going to be usize::MAX moves.
+            #[allow(clippy::arithmetic_side_effects)]
+            {
+                self.current_move_index += 1;
+            }
             //println!("Move {} is ok", san_plus.san)
         }
     }

@@ -1,6 +1,5 @@
 use std::borrow::Cow;
 use std::fmt::{Debug, Display, Formatter, Write};
-use std::ops::Deref;
 use shakmaty::{Chess, Move, Position};
 use shakmaty::san::{San, SanError, SanPlus, Suffix};
 
@@ -43,36 +42,38 @@ impl Turn {
 }
 
 /// An always legal variation with a history of [`Turn`]s.
+///
+/// Position indexes are treated as such: the position at index `x` is the position that occurs
+/// *before* the move at index `x` is played. If you want to get the position that occurs
+/// *after* the last move was played, use [`Variation::position_after_last_move`].
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Variation {
     first_position: Chess,
     turns: Vec<Turn>,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub enum InsertVariationError {
     NoSuchTurn { index: usize },
     /// The position at the specified index does not match the new variation's starting position.
-    PositionDoesNotMatch
+    PositionDoesNotMatch {
+        position_at_index: Box<Chess>,
+        new_variation_first_position: Box<Chess>
+    }
 }
 
 #[derive(Debug)]
 pub enum PlayAtError {
-    NoSuchTurn { index: usize },
+    NoTurnAt { index: usize },
+    /// An illegal move was played.
     PlayError(VariationPlayError)
 }
 
 #[derive(Debug)]
 pub enum PlaySanAtError {
-    NoSuchTurn { index: usize },
+    NoTurnAt { index: usize },
+    /// An illegal/ambiguous SAN was played.
     PlayError(VariationSanPlayError)
-}
-
-/// The position does not match the new variation's starting position.
-#[derive(Debug, Clone)]
-pub struct PositionDoesNotMatchError {
-    pub position1: Chess,
-    pub position2: Chess
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -121,8 +122,8 @@ impl Variation {
 
     /// Returns the position that occurs *after* the last move is played.
     ///
-    /// See also [`Self::position_before_last_move`].
-    pub fn last_position(&self) -> Cow<Chess> {
+    /// See also [`Self::position_before_last_move`] and [`Self::get_position`].
+    pub fn position_after_last_move(&self) -> Cow<Chess> {
         if self.turns.is_empty() {
             return Cow::Borrowed(&self.first_position);
         }
@@ -136,18 +137,22 @@ impl Variation {
         Cow::Owned(last_position)
     }
 
+    // CLIPPY: The `unwrap` won't panic, see explanation.
+    #[allow(clippy::missing_panics_doc)]
     /// Returns the position that occurs *before* the last move is played.
     ///
     /// This is useful if you want to start a subvariation at the last turn of a variation.
     ///
-    /// See also [`Self::last_position`].
+    /// See also [`Self::position_after_last_move`] and [`Self::get_position`].
     pub fn position_before_last_move(&self) -> Cow<Chess> {
-        if self.turns.is_empty() {
+        if self.turns.is_empty() || self.turns.len() == 1 {
             return Cow::Borrowed(&self.first_position);
         }
 
         let mut last_position = self.first_position.clone();
 
+        // CLIPPY: self.turns.len() > 1 because of the `is_empty` and `len` check above.
+        #[allow(clippy::arithmetic_side_effects)]
         for turn_i in 0..self.turns.len() - 1 {
             // CLIPPY: This for loop ensures the index is within bounds.
             #[allow(clippy::unwrap_used)]
@@ -158,18 +163,22 @@ impl Variation {
 
         Cow::Owned(last_position)
     }
-    
+
+    /// Returns the position that occurs before the turn at `index` is played,
+    /// or [`None`] if the index is out of bounds.
+    ///
+    /// See also [`Self::position_before_last_move`] and [`Self::position_after_last_move`].
     pub fn get_position(&self, index: usize) -> Option<Cow<Chess>> {
-        if index == 0 {
+        if index == 0 || self.turns.is_empty() || self.turns.len() == 1 {
             return Some(Cow::Borrowed(&self.first_position));
-        } else if index > self.turns.len() {
+        } else if index >= self.turns.len() {
             return None;
         }
 
         let mut requested_position = self.first_position.clone();
 
-        for (turns_traversed, turn) in self.turns.iter().enumerate() {
-            if index == turns_traversed {
+        for (turn_i, turn) in self.turns.iter().enumerate() {
+            if index == turn_i {
                 break;
             }
 
@@ -179,13 +188,20 @@ impl Variation {
         Some(Cow::Owned(requested_position))
     }
 
+    /// Equivalent to [`Vec::get_mut`].
+    ///
+    /// Useful if you need to modify a variation at that turn.
     pub fn get_turn_mut(&mut self, index: usize) -> Option<&mut Turn> {
         self.turns.get_mut(index)
     }
 
     /// Attempts to play a turn in the last position.
+    ///
+    /// # Errors
+    ///
+    /// See [`VariationPlayError`].
     pub fn play(&mut self, turn: Turn) -> Result<(), VariationPlayError> {
-        if !self.last_position().is_legal(&turn.r#move) {
+        if !self.position_after_last_move().is_legal(&turn.r#move) {
             return Err(VariationPlayError {
                 at_position: self.turns.len(),
                 r#move: turn.r#move
@@ -197,21 +213,35 @@ impl Variation {
     }
 
     /// See [`Self::play`].
-    pub fn play_san(&mut self, san: &San, variations_capacity: VariationsCapacity) -> Result<(), SanError> {
-        let last_position = self.last_position();
-        let r#move = san.to_move(last_position.deref())?;
+    ///
+    /// # Errors
+    ///
+    /// See [`VariationSanPlayError`]. `at_position` is set to the last turn index in this variation.
+    pub fn play_san(&mut self, san: &San, variations_capacity: VariationsCapacity) -> Result<(), VariationSanPlayError> {
+        let position_after_last_move = self.position_after_last_move();
+        let r#move = san.to_move(&*position_after_last_move).map_err(|error| VariationSanPlayError {
+            at_position: self.turns.len().saturating_sub(1),
+            san: san.clone(),
+            error,
+        })?;
 
         self.turns.push(Turn::new(r#move, variations_capacity));
 
         Ok(())
     }
 
+    // CLIPPY: All potential panicking code is explained.
+    #[allow(clippy::missing_panics_doc)]
     /// Attempts to play a move at the specified index,
     /// thereby changing the move at that index and removing all the turns after `index`.
     ///
     /// Removal is necessary because the variation history is changed by this.
+    ///
+    /// # Errors
+    ///
+    /// See [`PlayAtError`].
     pub fn play_at(&mut self, index: usize, r#move: Move) -> Result<(), PlayAtError> {
-        if !self.get_position(index).ok_or(PlayAtError::NoSuchTurn { index })?.is_legal(&r#move) {
+        if !self.get_position(index).ok_or(PlayAtError::NoTurnAt { index })?.is_legal(&r#move) {
             return Err(PlayAtError::PlayError(VariationPlayError {
                 at_position: index,
                 r#move,
@@ -226,6 +256,9 @@ impl Variation {
                 .r#move = r#move;
         }
 
+        // CLIPPY: `index + 1` is guaranteed to be less or equal to `turns.len()`
+        // because of the `get_position` above. Both cases are fine.
+        #[allow(clippy::arithmetic_side_effects)]
         for i in index + 1..self.turns.len() {
             self.turns.swap_remove(i);
         }
@@ -233,11 +266,17 @@ impl Variation {
         Ok(())
     }
 
+    // CLIPPY: All panics are explained.
+    #[allow(clippy::missing_panics_doc)]
     /// See [`Self::play_at`].
-    pub fn play_san_at(&mut self, index: usize, san: San) -> Result<(), PlaySanAtError> {
-        let r#move = san.to_move(self.get_position(index).ok_or(PlaySanAtError::NoSuchTurn { index })?.deref()).map_err(|error| PlaySanAtError::PlayError(VariationSanPlayError {
+    ///
+    /// # Errors
+    ///
+    /// See [`PlaySanAtError`].
+    pub fn play_san_at(&mut self, index: usize, san: &San) -> Result<(), PlaySanAtError> {
+        let r#move = san.to_move(&*self.get_position(index).ok_or(PlaySanAtError::NoTurnAt { index })?).map_err(|error| PlaySanAtError::PlayError(VariationSanPlayError {
             at_position: index,
-            san,
+            san: san.clone(),
             error,
         }))?;
 
@@ -248,7 +287,10 @@ impl Variation {
                 .unwrap()
                 .r#move = r#move;
         }
-
+        
+        // CLIPPY: `index + 1` is guaranteed to be less or equal to `turns.len()`
+        // because of the `get_position` above. Both cases are fine.
+        #[allow(clippy::arithmetic_side_effects)]
         for i in index + 1..self.turns.len() {
             self.turns.swap_remove(i);
         }
@@ -264,9 +306,18 @@ impl Variation {
     /// Inserts a variation to the turn at the specified index.
     /// 
     /// The new variation must have the same starting position as this variation's position at `index`.
+    ///
+    /// # Errors
+    ///
+    /// See [`InsertVariationError`].
     pub fn insert_variation(&mut self, index: usize, variation: Self) -> Result<(), InsertVariationError> {
-        if variation.first_position != *self.get_position(index).ok_or(InsertVariationError::NoSuchTurn { index })? {
-            return Err(InsertVariationError::PositionDoesNotMatch);
+        let position_at_index = self.get_position(index).ok_or(InsertVariationError::NoSuchTurn { index })?.into_owned();
+
+        if variation.first_position != position_at_index {
+            return Err(InsertVariationError::PositionDoesNotMatch {
+                position_at_index: Box::new(position_at_index),
+                new_variation_first_position: Box::new(variation.first_position)
+            });
         }
 
         self.get_turn_mut(index)
@@ -284,7 +335,9 @@ fn fmt(f: &mut Formatter<'_>, mut move_number: MoveNumber, variation: &Variation
         #[allow(clippy::unwrap_used)]
         let Turn { r#move, variations: subvariations } = variation.turns.get(turn_i).unwrap();
         #[allow(clippy::unwrap_used)]
-        let position = variation.get_position(turn_i).unwrap();
+        // + 1 index because we want the position *after* the move for the suffix.
+        // You would think that would mess up `San::from_move`, but nope. Tests pass.
+        let position = variation.get_position(turn_i.saturating_add(1)).unwrap_or_else(|| variation.position_after_last_move());
 
         if very_first_move {
             very_first_move = false;
@@ -322,6 +375,7 @@ fn fmt(f: &mut Formatter<'_>, mut move_number: MoveNumber, variation: &Variation
 }
 
 impl Display for Variation {
+    /// Displays the PGN movelist representation of this variation.
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         fmt(f, MoveNumber::MIN, self, true)
     }
@@ -371,6 +425,8 @@ macro_rules! play_sans {
     };
 }
 
+// It is used in tests.
+#[allow(unused_macros)]
 /// Plays the given SAN strings in the variation, returning the first error.
 ///
 /// Syntax: `play_san_strings!(variation, san_string1, san_string2, ..)`.
@@ -382,10 +438,10 @@ macro_rules! play_sans {
 macro_rules! play_san_strings {
     ($variation:expr, $($san_string:expr),*) => {
         {
-            use ::shakmaty::san::SanError;
+            use ::shakmaty::san::San;
             use ::std::str::FromStr;
-            use $crate::Variation;
-            fn play_sans(variation: &mut Variation) -> Result<(), SanError> {
+            use $crate::{Variation, VariationSanPlayError};
+            fn play_sans(variation: &mut Variation) -> Result<(), VariationSanPlayError> {
                 $(
                 variation.play_san(&San::from_str($san_string).unwrap(), VariationsCapacity::default())?;
                 )*

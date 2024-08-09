@@ -1,5 +1,5 @@
 use std::time::Instant;
-use rpgn::Game;
+use rpgn::Pgn;
 
 const PGN: &str = r#"[Event "Live Chess"]
 [Site "Chess.com"]
@@ -50,15 +50,13 @@ const PGN2: &str = r#"[Event "Let's Play!"]
 
 
 fn main() {
-    //println!("{:#?}", Game::from_str(PGN));
-
     let start = Instant::now();
-    let game = Game::from_str(PGN2);
+    let pgn = Pgn::from_str(PGN2);
     let elapsed = start.elapsed().as_micros();
     println!("From PGN elapsed: {elapsed:?} micros");
-    let var = game.first().unwrap().as_ref().unwrap().clone().root_variation.unwrap();
+    let pgn = pgn.first().unwrap().as_ref().unwrap();
     let start = Instant::now();
-    let _ = var.to_string();
+    let _ = pgn.to_string();
     let elapsed = start.elapsed().as_micros();
-    println!("From PGN elapsed: {elapsed:?} micros");
+    println!("To PGN elapsed: {elapsed:?} micros");
 }
