@@ -1,20 +1,20 @@
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
 use rpgn::samples::*;
-use rpgn::{Pgn, Turn};
 
 pub fn construct(c: &mut Criterion) {
     let mut group = c.benchmark_group("construct");
 
-    for var in variation_sample_fns() {
-        let turns = var().turns();
+    for var_fn in variation_sample_fns() {
+        let var = var_fn();
+        let turns = var.turns();
         let mut id = String::with_capacity(4 * 2 + 1);
 
         id.push_str(&turns.first().unwrap().r#move().to_string().replace('-', ""));
         id.push('-');
         id.push_str(&turns.last().unwrap().r#move().to_string().replace('-', ""));
 
-        group.bench_with_input(BenchmarkId::from_parameter(id), &(), |b, ()| {
-            b.iter(|| black_box(var()))
+        group.bench_with_input(BenchmarkId::from_parameter(id), &var_fn, |b, var_fn| {
+            b.iter(|| black_box(var_fn()))
         });
     }
 
@@ -35,7 +35,7 @@ pub fn read_positions(c: &mut Criterion) {
 
         group.bench_with_input(
             BenchmarkId::from_parameter(id),
-            &(turns, var),
+            &(turns, &var),
             |b, (turns, var)| {
                 b.iter(|| {
                     for i in 0..turns.len() {
