@@ -1,7 +1,7 @@
 use pgn_reader::{RawHeader, Skip};
 use std::str::FromStr;
 use shakmaty::Chess;
-use shakmaty::san::{SanError, SanPlus};
+use shakmaty::san::SanPlus;
 use crate::{Variation, Eco, pgn::{Date, Round, Outcome, Pgn}, TurnsCapacity, VariationsCapacity, VariationSanPlayError};
 
 pub(super) struct Visitor {

@@ -62,7 +62,7 @@ pub struct Variation {
     turns: Vec<Turn>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum InsertVariationError {
     NoSuchTurn { index: usize },
     /// The position at the specified index does not match the new variation's starting position.
@@ -72,32 +72,32 @@ pub enum InsertVariationError {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum PlayAtError {
     NoTurnAt { index: usize },
     /// An illegal move was played.
     PlayError(VariationPlayError)
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum PlaySanAtError {
     NoTurnAt { index: usize },
     /// An illegal/ambiguous SAN was played.
     PlayError(VariationSanPlayError)
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct NoSuchTurnError {
     pub index: usize
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct VariationPlayError {
     pub turn_index: usize,
     pub r#move: Move,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct VariationSanPlayError {
     pub turn_index: usize,
     pub san: San,
@@ -184,7 +184,9 @@ impl Variation {
         } else if index >= self.turns.len() {
             return None;
         }
-        
+
+        // CLIPPY: `index < turns.len()` and `index > 0`, so `index - 1 > -1`.
+        #[allow(clippy::arithmetic_side_effects)]
         if let Some(cached_position) = self.turns.get(index - 1).and_then(|turn| turn.position_after.as_ref()) {
             return Some(Cow::Borrowed(cached_position));
         }
@@ -360,11 +362,7 @@ fn fmt(f: &mut Formatter<'_>, mut move_number: MoveNumber, variation: &Variation
         #[allow(clippy::unwrap_used)]
         // + 1 index because we want the position *after* the move for the suffix.
         // You would think that would mess up `San::from_move`, but nope. Tests pass.
-        let position = if let Some(position_after) = position_after {
-            Cow::Borrowed(position_after)
-        } else {
-            variation.get_position(turn_i.saturating_add(1)).unwrap_or_else(|| variation.position_after_last_move())
-        };
+        let position = position_after.as_ref().map_or_else(|| variation.get_position(turn_i.saturating_add(1)).unwrap_or_else(|| variation.position_after_last_move()), Cow::Borrowed);
 
         if very_first_move {
             very_first_move = false;

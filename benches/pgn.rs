@@ -1,11 +1,11 @@
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
-use rpgn::pgn::samples::*;
-use rpgn::{Pgn, Turn};
+use rpgn::samples::pgn_samples;
+use rpgn::Pgn;
 
 pub fn to_pgn(c: &mut Criterion) {
     let mut group = c.benchmark_group("to_pgn");
 
-    for pgn in samples().iter().filter_map(|s| s.parsed.as_ref().ok()) {
+    for pgn in pgn_samples().iter().filter_map(|s| s.parsed.as_ref().ok()) {
         let turns = pgn.root_variation.as_ref().unwrap().turns();
         let mut id = String::with_capacity(5 * 2 + 1);
 
@@ -24,7 +24,7 @@ pub fn to_pgn(c: &mut Criterion) {
 pub fn from_pgn(c: &mut Criterion) {
     let mut group = c.benchmark_group("from_pgn");
 
-    for (pgn_string, pgn) in samples()
+    for (pgn_string, pgn) in pgn_samples()
         .iter()
         .filter_map(|s| s.parsed.as_ref().ok().map(|p| (s.string, p)))
     {

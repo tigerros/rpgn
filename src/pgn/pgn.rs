@@ -1,7 +1,7 @@
 use std::fmt::{Display, Formatter, Write};
 use std::io::Read;
 use pgn_reader::BufferedReader;
-use super::visitor::{Visitor, PgnSanError};
+use super::visitor::Visitor;
 use crate::{Eco, pgn::{Outcome, Date, Round}, Variation, VariationSanPlayError};
 
 #[derive(Clone, Debug, PartialEq, Eq)]

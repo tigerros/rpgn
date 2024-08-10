@@ -23,8 +23,9 @@ proptest = "1.4.0"
 criterion = "0.5.1"
 
 [[bench]]
-name = "benches"
+name = "variation"
 harness = false
 
-[features]
-samples = []
+[[bench]]
+name = "pgn"
+harness = false
