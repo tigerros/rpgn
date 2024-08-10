@@ -1,5 +1,4 @@
 use rpgn::Pgn;
-use std::time::Instant;
 
 const PGN: &str = r#"[Event "Live Chess"]
 [Site "Chess.com"]
@@ -33,20 +32,6 @@ const PGN: &str = r#"[Event "Live Chess"]
 Bg4 9. Qa1 d4 10. h3 dxe3 11. fxe3 Bf5 12. Nf3 Nb4 13. O-O Nxc2 14. Nxc2 Bxc2
 15. Bxe5 Be4 16. Bc3 Nh5 17. g4 Ng3 18. Rf2 f6 19. g5 Bxf3 20. Bxf3 fxg5 21.
 Bxg7 Qd7 22. Bh6 Ne4 23. Bg4 Qe7 (23... Qe7 24. Be6+) 1-0"#;
-
-const PGN2: &str = r#"[Event "Let's Play!"]
-[Site "Chess.com"]
-[Date "2024.02.14"]
-[Round "?"]
-[White "4m9n"]
-[Black "tigerros0"]
-[Result "0-1"]
-[WhiteElo "1490"]
-[BlackElo "1565"]
-[ECO "C50"]
-[TimeControl "600+0"]
-
-1. e4 ( 1. d4 1... d5 ( 1... f5 ) ) 1... e5 2. Nf3 2... Nc6 3. Bc4 3... Nf6 ( 3... Bc5 ) 4. d3"#;
 
 fn main() {
     let pgn = Pgn::from_str(PGN);
