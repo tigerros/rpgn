@@ -1,5 +1,5 @@
-use std::time::Instant;
 use rpgn::Pgn;
+use std::time::Instant;
 
 const PGN: &str = r#"[Event "Live Chess"]
 [Site "Chess.com"]
@@ -48,9 +48,8 @@ const PGN2: &str = r#"[Event "Let's Play!"]
 
 1. e4 ( 1. d4 1... d5 ( 1... f5 ) ) 1... e5 2. Nf3 2... Nc6 3. Bc4 3... Nf6 ( 3... Bc5 ) 4. d3"#;
 
-
 fn main() {
     let pgn = Pgn::from_str(PGN);
-    
+
     println!("Parsed PGN: {pgn:#?}");
 }
