@@ -16,6 +16,7 @@ impl Default for VariationsCapacity {
 /// A move that was played and a list of variations.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Turn {
+    position_after: Option<Chess>,
     r#move: Move,
     variations: Vec<Variation>
 }
@@ -23,6 +24,15 @@ pub struct Turn {
 impl Turn {
     pub fn new(r#move: Move, variations_capacity: VariationsCapacity) -> Self {
         Self {
+            position_after: None,
+            r#move,
+            variations: Vec::with_capacity(variations_capacity.0)
+        }
+    }
+
+    fn with_position_after(r#move: Move, variations_capacity: VariationsCapacity, position_after: Chess) -> Self {
+        Self {
+            position_after: Some(position_after),
             r#move,
             variations: Vec::with_capacity(variations_capacity.0)
         }
@@ -83,13 +93,13 @@ pub struct NoSuchTurnError {
 
 #[derive(Debug)]
 pub struct VariationPlayError {
-    pub at_position: usize,
+    pub turn_index: usize,
     pub r#move: Move,
 }
 
 #[derive(Debug)]
 pub struct VariationSanPlayError {
-    pub at_position: usize,
+    pub turn_index: usize,
     pub san: San,
     pub error: SanError
 }
@@ -174,6 +184,10 @@ impl Variation {
         } else if index >= self.turns.len() {
             return None;
         }
+        
+        if let Some(cached_position) = self.turns.get(index - 1).and_then(|turn| turn.position_after.as_ref()) {
+            return Some(Cow::Borrowed(cached_position));
+        }
 
         let mut requested_position = self.first_position.clone();
 
@@ -200,14 +214,19 @@ impl Variation {
     /// # Errors
     ///
     /// See [`VariationPlayError`].
-    pub fn play(&mut self, turn: Turn) -> Result<(), VariationPlayError> {
-        if !self.position_after_last_move().is_legal(&turn.r#move) {
+    pub fn play(&mut self, mut turn: Turn) -> Result<(), VariationPlayError> {
+        let position_after_last_move = self.position_after_last_move();
+        if !position_after_last_move.is_legal(&turn.r#move) {
             return Err(VariationPlayError {
-                at_position: self.turns.len(),
+                turn_index: self.turns.len(),
                 r#move: turn.r#move
             });
         }
 
+        let mut new_position = position_after_last_move.into_owned();
+
+        new_position.play_unchecked(&turn.r#move);
+        turn.position_after = Some(new_position);
         self.turns.push(turn);
         Ok(())
     }
@@ -220,12 +239,16 @@ impl Variation {
     pub fn play_san(&mut self, san: &San, variations_capacity: VariationsCapacity) -> Result<(), VariationSanPlayError> {
         let position_after_last_move = self.position_after_last_move();
         let r#move = san.to_move(&*position_after_last_move).map_err(|error| VariationSanPlayError {
-            at_position: self.turns.len().saturating_sub(1),
+            turn_index: self.turns.len().saturating_sub(1),
             san: san.clone(),
             error,
         })?;
 
-        self.turns.push(Turn::new(r#move, variations_capacity));
+        let mut new_position = position_after_last_move.into_owned();
+
+        new_position.play_unchecked(&r#move);
+
+        self.turns.push(Turn::with_position_after(r#move, variations_capacity, new_position));
 
         Ok(())
     }
@@ -243,7 +266,7 @@ impl Variation {
     pub fn play_at(&mut self, index: usize, r#move: Move) -> Result<(), PlayAtError> {
         if !self.get_position(index).ok_or(PlayAtError::NoTurnAt { index })?.is_legal(&r#move) {
             return Err(PlayAtError::PlayError(VariationPlayError {
-                at_position: index,
+                turn_index: index,
                 r#move,
             }));
         }
@@ -275,7 +298,7 @@ impl Variation {
     /// See [`PlaySanAtError`].
     pub fn play_san_at(&mut self, index: usize, san: &San) -> Result<(), PlaySanAtError> {
         let r#move = san.to_move(&*self.get_position(index).ok_or(PlaySanAtError::NoTurnAt { index })?).map_err(|error| PlaySanAtError::PlayError(VariationSanPlayError {
-            at_position: index,
+            turn_index: index,
             san: san.clone(),
             error,
         }))?;
@@ -333,11 +356,15 @@ fn fmt(f: &mut Formatter<'_>, mut move_number: MoveNumber, variation: &Variation
     for turn_i in 0..variation.turns.len() {
         // CLIPPY: The above for loop ensures the index is within bounds.
         #[allow(clippy::unwrap_used)]
-        let Turn { r#move, variations: subvariations } = variation.turns.get(turn_i).unwrap();
+        let Turn { position_after, r#move, variations: subvariations } = variation.turns.get(turn_i).unwrap();
         #[allow(clippy::unwrap_used)]
         // + 1 index because we want the position *after* the move for the suffix.
         // You would think that would mess up `San::from_move`, but nope. Tests pass.
-        let position = variation.get_position(turn_i.saturating_add(1)).unwrap_or_else(|| variation.position_after_last_move());
+        let position = if let Some(position_after) = position_after {
+            Cow::Borrowed(position_after)
+        } else {
+            variation.get_position(turn_i.saturating_add(1)).unwrap_or_else(|| variation.position_after_last_move())
+        };
 
         if very_first_move {
             very_first_move = false;

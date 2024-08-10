@@ -1,3 +1,5 @@
+//! These are samples I use in tests and benchmarks.
+
 // CLIPPY: These samples are used in tests, any panics will be caught.
 #![allow(clippy::unwrap_used)]
 #![allow(clippy::unreachable)]
@@ -5,41 +7,30 @@
 use std::num::{NonZeroU16, NonZeroU8};
 use shakmaty::{Chess, Color};
 use shakmaty::san::{San, SanError};
-use crate::{pgn::{Date, Outcome, Round}, Pgn, PgnParseError, Eco, EcoCategory, MoveNumber, TurnsCapacity, Variation};
-use crate::pgn::visitor::VisitorSanError;
+use crate::{pgn::{Date, Outcome, Round}, Pgn, PgnParseError, Eco, EcoCategory, MoveNumber, TurnsCapacity, Variation, VariationSanPlayError};
 use crate::variation::play_san_strings;
 
 #[derive(Debug)]
-pub struct Sample {
+pub struct PgnSample {
     pub string: &'static str,
     pub parsed: Result<Pgn, PgnParseError>
 }
 
-impl Sample {
+impl PgnSample {
     pub const fn new(string: &'static str, parsed: Result<Pgn, PgnParseError>) -> Self {
         Self { string, parsed }
     }
 }
 
-pub fn samples() -> [Sample; 6] {
-    [sample0(), sample1(), sample2(), sample3(), sample4(), sample5()]
+pub fn variation_sample_fns() -> [fn() -> Variation; 3] {
+    [variation_sample0, variation_sample1, variation_sample2]
 }
 
-pub fn sample0() -> Sample {
-    const PGN: &str = r#"[Event "Let's Play!"]
-[Site "Chess.com"]
-[Date "2024.02.14"]
-[Round "?"]
-[White "4m9n"]
-[Black "tigerros0"]
-[Result "0-1"]
-[WhiteElo "1490"]
-[BlackElo "1565"]
-[ECO "C50"]
-[TimeControl "600+0"]
+pub fn pgn_samples() -> [PgnSample; 6] {
+    [pgn_sample0(), pgn_sample1(), pgn_sample2(), pgn_sample3(), pgn_sample4(), pgn_sample5()]
+}
 
-1. e4 ( 1. d4 1... d5 ( 1... f5 ) ) 1... e5 2. Nf3 2... Nc6 3. Bc4 3... Nf6 ( 3... Bc5 ) 4. Nc3"#;
-
+pub fn variation_sample0() -> Variation {
     let mut root_var = Variation::new(
         Chess::default(),
         TurnsCapacity::default()
@@ -86,7 +77,25 @@ pub fn sample0() -> Sample {
     root_var.insert_variation(0, d4_var).unwrap();
     root_var.insert_variation(bc5_var_index, bc5_var).unwrap();
 
-    Sample::new(PGN, Ok(Pgn {
+    root_var
+}
+
+pub fn pgn_sample0() -> PgnSample {
+    const PGN: &str = r#"[Event "Let's Play!"]
+[Site "Chess.com"]
+[Date "2024.02.14"]
+[Round "?"]
+[White "4m9n"]
+[Black "tigerros0"]
+[Result "0-1"]
+[WhiteElo "1490"]
+[BlackElo "1565"]
+[ECO "C50"]
+[TimeControl "600+0"]
+
+1. e4 ( 1. d4 1... d5 ( 1... f5 ) ) 1... e5 2. Nf3 2... Nc6 3. Bc4 3... Nf6 ( 3... Bc5 ) 4. Nc3"#;
+
+    PgnSample::new(PGN, Ok(Pgn {
         event: Some("Let's Play!".to_string()),
         site: Some("Chess.com".to_string()),
         date: Some(Date::new(Some(2024), Some(unsafe { NonZeroU8::new_unchecked(2) }), Some(unsafe { NonZeroU8::new_unchecked(14) })).unwrap()),
@@ -98,11 +107,24 @@ pub fn sample0() -> Sample {
         black_elo: Some(1565),
         eco: Some(Eco::new(EcoCategory::C, 50).unwrap()),
         time_control: Some("600+0".to_string()),
-        root_variation: Some(root_var),
+        root_variation: Some(variation_sample0()),
     }))
 }
 
-pub fn sample1() -> Sample {
+pub fn variation_sample1() -> Variation {
+    let mut root_var = Variation::new(Chess::new(), TurnsCapacity(4));
+
+    play_san_strings!(root_var,
+        "g4",
+        "e5",
+        "f3",
+        "Qh4"
+    ).unwrap();
+
+    root_var
+}
+
+pub fn pgn_sample1() -> PgnSample {
     const PGN: &str = r#"[Event "Live Chess"]
 [Site "Lichess"]
 [Date "2024.02.??"]
@@ -117,16 +139,7 @@ pub fn sample1() -> Sample {
 
 1. g4 1... e5 2. f3 2... Qh4#"#;
 
-    let mut root_var = Variation::new(Chess::new(), TurnsCapacity(4));
-
-    play_san_strings!(root_var,
-        "g4",
-        "e5",
-        "f3",
-        "Qh4"
-    ).unwrap();
-
-    Sample::new(PGN, Ok(Pgn {
+    PgnSample::new(PGN, Ok(Pgn {
         event: Some("Live Chess".to_string()),
         site: Some("Lichess".to_string()),
         date: Some(Date::new(Some(2024), Some(unsafe { NonZeroU8::new_unchecked(2) }), None).unwrap()),
@@ -138,17 +151,11 @@ pub fn sample1() -> Sample {
         round: Some(Round::Multipart(vec![3, 1, 2])),
         eco: Some(Eco::new(EcoCategory::A, 00).unwrap()),
         time_control: Some("600+2".to_string()),
-        root_variation: Some(root_var),
+        root_variation: Some(variation_sample1()),
     }))
 }
 
-pub fn sample2() -> Sample {
-    const PGN: &str = r#"[Date "????.01.??"]
-[Round "1"]
-[Result "1/2-1/2"]
-[ECO "C50"]
-
-1. e4 ( 1. d4 1... d5 ( 1... f5 2. g3 ( 2. c4 2... Nf6 3. Nc3 3... e6 ( 3... g6 ) 4. Nf3 ) 2... Nf6 ) ) 1... e5 2. Nf3 2... Nc6 3. Bc4 3... Nf6 ( 3... Bc5 ) 4. d3"#;
+pub fn variation_sample2() -> Variation {
     let mut root_var = Variation::new(Chess::new(), TurnsCapacity(1));
 
     play_san_strings!(root_var,
@@ -218,7 +225,18 @@ pub fn sample2() -> Sample {
     root_var.insert_variation(0, d4_var).unwrap();
     root_var.insert_variation(bc5_var_index, bc5_var).unwrap();
 
-    Sample::new(PGN, Ok(Pgn {
+    root_var
+}
+
+pub fn pgn_sample2() -> PgnSample {
+    const PGN: &str = r#"[Date "????.01.??"]
+[Round "1"]
+[Result "1/2-1/2"]
+[ECO "C50"]
+
+1. e4 ( 1. d4 1... d5 ( 1... f5 2. g3 ( 2. c4 2... Nf6 3. Nc3 3... e6 ( 3... g6 ) 4. Nf3 ) 2... Nf6 ) ) 1... e5 2. Nf3 2... Nc6 3. Bc4 3... Nf6 ( 3... Bc5 ) 4. d3"#;
+
+    PgnSample::new(PGN, Ok(Pgn {
         event: None,
         site: None,
         date: Some(Date::new(None, Some(unsafe { NonZeroU8::new_unchecked(1) }), None).unwrap()),
@@ -230,38 +248,38 @@ pub fn sample2() -> Sample {
         black_elo: None,
         eco: Some(Eco::new(EcoCategory::C, 50).unwrap()),
         time_control: None,
-        root_variation: Some(root_var),
+        root_variation: Some(variation_sample2()),
     }))
 }
 
 /// Erroneous (1... h4).
-pub fn sample3() -> Sample {
+pub fn pgn_sample3() -> PgnSample {
     const PGN: &str = "1. e4 ( 1. d4 1... d5 ( 1... h4 ) ) 1... e5 2. Nc3";
     
-    Sample::new(PGN, Err(PgnParseError::SanError(VisitorSanError {
-        move_index: 1,
+    PgnSample::new(PGN, Err(PgnParseError::SanError(VariationSanPlayError {
+        turn_index: 1,
         san: San::from_ascii(b"h4").unwrap(),
         error: SanError::IllegalSan,
     })))
 }
 
 /// Erroneous (4. Nf2).
-pub fn sample4() -> Sample {
+pub fn pgn_sample4() -> PgnSample {
     const PGN: &str = "1. e4 ( 1. d4 1... d5 ( 1... f5 2. g3 ( 2. c4 2... Nf6 3. Nc3 3... e6 ( 3... g6 ) 4. Nf2 ) 2... Nf6 ) ) 1... e5";
     
-    Sample::new(PGN, Err(PgnParseError::SanError(VisitorSanError {
-        move_index: 6,
+    PgnSample::new(PGN, Err(PgnParseError::SanError(VariationSanPlayError {
+        turn_index: 6,
         san: San::from_ascii(b"Nf2").unwrap(),
         error: SanError::IllegalSan,
     })))
 }
 
 /// Erroneous (3. Nd2 is ambiguous).
-pub fn sample5() -> Sample {
+pub fn pgn_sample5() -> PgnSample {
     const PGN: &str = "1. Nf3 1... a6 2. d3 2... a5 3. Nd2";
     
-    Sample::new(PGN, Err(PgnParseError::SanError(VisitorSanError {
-        move_index: 4,
+    PgnSample::new(PGN, Err(PgnParseError::SanError(VariationSanPlayError {
+        turn_index: 4,
         san: San::from_ascii(b"Nd2").unwrap(),
         error: SanError::AmbiguousSan,
     })))

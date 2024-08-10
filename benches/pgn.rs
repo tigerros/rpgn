@@ -7,7 +7,7 @@ pub fn to_pgn(c: &mut Criterion) {
 
     for pgn in samples().iter().filter_map(|s| s.parsed.as_ref().ok()) {
         let turns = pgn.root_variation.as_ref().unwrap().turns();
-        let mut id = String::with_capacity(6 * 2);
+        let mut id = String::with_capacity(5 * 2 + 1);
 
         id.push_str(&turns.first().unwrap().r#move().to_string().replace('-', ""));
         id.push('-');
@@ -29,7 +29,7 @@ pub fn from_pgn(c: &mut Criterion) {
         .filter_map(|s| s.parsed.as_ref().ok().map(|p| (s.string, p)))
     {
         let turns = pgn.root_variation.as_ref().unwrap().turns();
-        let mut id = String::with_capacity(4 * 2 + 1);
+        let mut id = String::with_capacity(5 * 2 + 1);
 
         id.push_str(&turns.first().unwrap().r#move().to_string().replace('-', ""));
         id.push('-');
@@ -45,29 +45,5 @@ pub fn from_pgn(c: &mut Criterion) {
     group.finish();
 }
 
-pub fn read_positions(c: &mut Criterion) {
-    let mut group = c.benchmark_group("read_positions");
-
-    for pgn in samples().iter().filter_map(|s| s.parsed.as_ref().ok()) {
-        let root_var = pgn.root_variation.as_ref().unwrap();
-        let turns = root_var.turns();
-        let mut id = String::with_capacity(4 * 2 + 1);
-
-        id.push_str(&turns.first().unwrap().r#move().to_string().replace('-', ""));
-        id.push('-');
-        id.push_str(&turns.last().unwrap().r#move().to_string().replace('-', ""));
-
-        group.bench_with_input(BenchmarkId::from_parameter(id), &(turns, root_var), |b, (turns, root_var)| {
-            b.iter(|| {
-                for i in 0..turns.len() {
-                    let _ = root_var.get_position(i);
-                }
-            })
-        });
-    }
-
-    group.finish();
-}
-
-criterion_group!(benches, to_pgn, from_pgn, read_positions);
+criterion_group!(benches, to_pgn, from_pgn);
 criterion_main!(benches);

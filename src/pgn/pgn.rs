@@ -1,8 +1,8 @@
 use std::fmt::{Display, Formatter, Write};
 use std::io::Read;
 use pgn_reader::BufferedReader;
-use super::visitor::{Visitor, VisitorSanError};
-use crate::{Eco, pgn::{Outcome, Date, Round}, Variation};
+use super::visitor::{Visitor, PgnSanError};
+use crate::{Eco, pgn::{Outcome, Date, Round}, Variation, VariationSanPlayError};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Pgn {
@@ -24,7 +24,7 @@ pub struct Pgn {
 #[derive(Debug)]
 pub enum PgnParseError {
     Io(std::io::Error),
-    SanError(VisitorSanError)
+    SanError(VariationSanPlayError)
 }
 
 impl Pgn {
@@ -140,15 +140,15 @@ mod tests {
     use super::*;
     use test_case::test_case;
     use pretty_assertions::assert_eq;
-    use crate::pgn::samples::*;
+    use crate::samples::*;
 
-    #[test_case(sample0())]
-    #[test_case(sample1())]
-    #[test_case(sample2())]
-    #[test_case(sample3())]
-    #[test_case(sample4())]
-    #[test_case(sample5())]
-    fn to_pgn_from_pgn(sample: Sample) {
+    #[test_case(pgn_sample0())]
+    #[test_case(pgn_sample1())]
+    #[test_case(pgn_sample2())]
+    #[test_case(pgn_sample3())]
+    #[test_case(pgn_sample4())]
+    #[test_case(pgn_sample5())]
+    fn to_pgn_from_pgn(sample: PgnSample) {
         let from_str_vec = Pgn::from_str(sample.string);
         let from_str = from_str_vec.first().unwrap();
 

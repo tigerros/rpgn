@@ -1,15 +1,8 @@
 use pgn_reader::{RawHeader, Skip};
 use std::str::FromStr;
 use shakmaty::Chess;
-use shakmaty::san::{San, SanError, SanPlus};
-use crate::{Variation, Eco, pgn::{Date, Round, Outcome, Pgn}, TurnsCapacity, VariationsCapacity};
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct VisitorSanError {
-    pub move_index: usize,
-    pub san: San,
-    pub error: SanError
-}
+use shakmaty::san::{SanError, SanPlus};
+use crate::{Variation, Eco, pgn::{Date, Round, Outcome, Pgn}, TurnsCapacity, VariationsCapacity, VariationSanPlayError};
 
 pub(super) struct Visitor {
     event: Option<String>,
@@ -24,9 +17,9 @@ pub(super) struct Visitor {
     eco: Option<Eco>,
     time_control: Option<String>,
     variation_tree: Vec<(usize, Variation)>,
-    current_move_index: usize,
+    current_turn_index: usize,
     root_variation: Variation,
-    result: Result<(), VisitorSanError>
+    result: Result<(), VariationSanPlayError>
 }
 
 impl Visitor {
@@ -44,7 +37,7 @@ impl Visitor {
             eco: None,
             time_control: None,
             variation_tree: Vec::with_capacity(0),
-            current_move_index: 0,
+            current_turn_index: 0,
             root_variation: Variation::new(Chess::default(), TurnsCapacity::default()),
             result: Ok(())
         }
@@ -57,7 +50,7 @@ impl Visitor {
     /// This is done because `pgn_reader`'s `Visitor` trait has a required `end_game`
     /// function, which would ideally return [`Pgn`], but it does not consume the visitor,
     /// so nothing can be moved.
-    pub fn into_pgn(self) -> Result<Pgn, VisitorSanError> {
+    pub fn into_pgn(self) -> Result<Pgn, VariationSanPlayError> {
         self.result?;
 
         Ok(Pgn {
@@ -105,7 +98,7 @@ impl pgn_reader::Visitor for Visitor {
         // CLIPPY: There's never going to be usize::MAX moves.
         #[allow(clippy::arithmetic_side_effects)]
         {
-            self.current_move_index -= 1;
+            self.current_turn_index -= 1;
         }
 
         let current_variation = self.variation_tree.last().map_or(&self.root_variation, |pair| &pair.1);
@@ -113,7 +106,7 @@ impl pgn_reader::Visitor for Visitor {
         //println!("Beginning var: {:?}", current_variation.position_before_last_move().board());
         let new_variation = Variation::new(current_variation.position_before_last_move().into_owned(), TurnsCapacity(50));
 
-        self.variation_tree.push((self.current_move_index, new_variation));
+        self.variation_tree.push((self.current_turn_index, new_variation));
 
         Skip(false)
     }
@@ -133,7 +126,7 @@ impl pgn_reader::Visitor for Visitor {
         // CLIPPY: There's never going to be u16::MAX moves.
         #[allow(clippy::arithmetic_side_effects)]
         {
-            self.current_move_index = ending_variation_move_number + 1;
+            self.current_turn_index = ending_variation_move_number + 1;
         }
         
         // print!("Finishing var: ");
@@ -165,8 +158,8 @@ impl pgn_reader::Visitor for Visitor {
 
         if let Err(error) = current_variation.play_san(&san_plus.san, VariationsCapacity::default()) {
             //println!("Move {} is err", san_plus.san);
-            self.result = Err(VisitorSanError {
-                move_index: self.current_move_index,
+            self.result = Err(VariationSanPlayError {
+                turn_index: self.current_turn_index,
                 //position: current_variation.last_position().into_owned(),
                 san: san_plus.san,
                 error: error.error,
@@ -175,7 +168,7 @@ impl pgn_reader::Visitor for Visitor {
             // CLIPPY: There's never going to be usize::MAX moves.
             #[allow(clippy::arithmetic_side_effects)]
             {
-                self.current_move_index += 1;
+                self.current_turn_index += 1;
             }
             //println!("Move {} is ok", san_plus.san)
         }

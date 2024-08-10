@@ -40,4 +40,6 @@ dry_mods::mods! {
     time_control_field;
     pub mod pgn;
 }
+#[cfg(feature = "samples")]
+pub mod samples;
 pub use pgn::{Pgn, PgnParseError};
