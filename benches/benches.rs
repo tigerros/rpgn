@@ -25,9 +25,7 @@ pub fn to_pgn(c: &mut Criterion) {
 pub fn from_pgn(c: &mut Criterion) {
     let mut group = c.benchmark_group("from_pgn");
 
-    for pgn_string in samples().iter().map(|s| s.string) {
-        let pgn = Pgn::from_str(pgn_string);
-        let pgn = pgn.first().unwrap().as_ref().unwrap();
+    for (pgn_string, pgn) in samples().iter().filter_map(|s| s.parsed.as_ref().ok().map(|p| (s.string, p))) {
         let turns = pgn.root_variation.as_ref().unwrap().turns();
         let mut id = String::with_capacity(6 * 2);
 
