@@ -1,8 +1,9 @@
 mod visitor;
 
 dry_mods::mods! {
-    mod pub use game,
+    mod pub use pgn,
     date,
     outcome,
     round;
+    pub mod samples;
 }

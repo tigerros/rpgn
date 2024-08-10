@@ -2,6 +2,7 @@ use std::fmt::{Display, Formatter};
 use std::str::FromStr;
 use shakmaty::Color;
 
+/// This is like [`shakmaty::Outcome`], but with an additional variant: [`Outcome::Other`].
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum Outcome {
     Decisive { winner: Color },
