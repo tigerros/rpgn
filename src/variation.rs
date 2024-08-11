@@ -337,7 +337,7 @@ fn fmt(f: &mut Formatter<'_>, mut move_number: MoveNumber, variation: &Variation
         // CLIPPY: There's never going to be u16::MAX moves.
         #[allow(clippy::arithmetic_side_effects)]
         {
-            move_number.index += 1;
+            move_number.0 += 1;
         }
     }
 

@@ -12,7 +12,7 @@ use crate::{
 };
 use shakmaty::san::{San, SanError};
 use shakmaty::{Chess, Color};
-use std::num::{NonZeroU16, NonZeroU8};
+use std::num::{NonZeroU8, NonZeroUsize};
 
 #[derive(Debug)]
 pub struct PgnSample {
@@ -54,7 +54,7 @@ pub fn variation_sample0() -> Variation {
     // CLIPPY: u16 as usize is safe.
     #[allow(clippy::as_conversions)]
     let bc5_var_index =
-        MoveNumber::from_color_and_number(Color::Black, NonZeroU16::new(3).unwrap()).index as usize;
+        MoveNumber::from_color_and_number(Color::Black, NonZeroUsize::new(3).unwrap()).0;
     let mut bc5_var = Variation::new(
         root_var.get_position(bc5_var_index).unwrap().clone(),
         TurnsCapacity(1),
@@ -204,7 +204,7 @@ pub fn variation_sample2() -> Variation {
     // CLIPPY: u16 as usize is safe.
     #[allow(clippy::as_conversions)]
     let bc5_var_index =
-        MoveNumber::from_color_and_number(Color::Black, NonZeroU16::new(3).unwrap()).index as usize;
+        MoveNumber::from_color_and_number(Color::Black, NonZeroUsize::new(3).unwrap()).0;
     let mut bc5_var = Variation::new(
         root_var.get_position(bc5_var_index).unwrap().clone(),
         TurnsCapacity(1),
