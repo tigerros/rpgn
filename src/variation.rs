@@ -170,7 +170,7 @@ impl Variation {
     /// See [`VariationPlayError`].
     pub fn play(&mut self, r#move: Move, variations_capacity: VariationsCapacity) -> Result<(), VariationPlayError> {
         let position_after_last_move = self.position_after_last_move();
-        
+
         if !position_after_last_move.is_legal(&r#move) {
             return Err(VariationPlayError {
                 turn_index: self.turns.len(),
@@ -218,27 +218,25 @@ impl Variation {
     ///
     /// See [`PlayAtError`].
     pub fn play_at(&mut self, index: usize, r#move: Move) -> Result<(), PlayAtError> {
-        if !self.get_position(index).ok_or(PlayAtError::NoTurnAt { index })?.is_legal(&r#move) {
+        let position_at_index = self.get_position(index).ok_or(PlayAtError::NoTurnAt { index })?;
+        
+        if !position_at_index.is_legal(&r#move) {
             return Err(PlayAtError::PlayError(VariationPlayError {
                 turn_index: index,
                 r#move,
             }));
         }
 
+        let mut new_position = position_at_index.clone();
+        new_position.play_unchecked(&r#move);
+
         // CLIPPY: `get_position` verifies that a turn exists at that index too.
         #[allow(clippy::unwrap_used)]
-        {
-            self.get_turn_mut(index)
-                .unwrap()
-                .r#move = r#move;
-        }
-
-        // CLIPPY: `index + 1` is guaranteed to be less or equal to `turns.len()`
-        // because of the `get_position` above. Both cases are fine.
-        #[allow(clippy::arithmetic_side_effects)]
-        for i in index + 1..self.turns.len() {
-            self.turns.swap_remove(i);
-        }
+        let turn = self.get_turn_mut(index).unwrap();
+        turn.r#move = r#move;
+        turn.position_after = new_position;
+        
+        self.turns.drain(index.saturating_add(1)..self.turns.len());
 
         Ok(())
     }
@@ -251,26 +249,23 @@ impl Variation {
     ///
     /// See [`PlaySanAtError`].
     pub fn play_san_at(&mut self, index: usize, san: &San) -> Result<(), PlaySanAtError> {
-        let r#move = san.to_move(self.get_position(index).ok_or(PlaySanAtError::NoTurnAt { index })?).map_err(|error| PlaySanAtError::PlayError(VariationSanPlayError {
+        let position_at_index = self.get_position(index).ok_or(PlaySanAtError::NoTurnAt { index })?;
+        let r#move = san.to_move(position_at_index).map_err(|error| PlaySanAtError::PlayError(VariationSanPlayError {
             turn_index: index,
             san: san.clone(),
             error,
         }))?;
 
+        let mut new_position = position_at_index.clone();
+        new_position.play_unchecked(&r#move);
+
         // CLIPPY: `get_position` verifies that a turn exists at that index too.
         #[allow(clippy::unwrap_used)]
-        {
-            self.get_turn_mut(index)
-                .unwrap()
-                .r#move = r#move;
-        }
-        
-        // CLIPPY: `index + 1` is guaranteed to be less or equal to `turns.len()`
-        // because of the `get_position` above. Both cases are fine.
-        #[allow(clippy::arithmetic_side_effects)]
-        for i in index + 1..self.turns.len() {
-            self.turns.swap_remove(i);
-        }
+        let turn = self.get_turn_mut(index).unwrap();
+        turn.r#move = r#move;
+        turn.position_after = new_position;
+
+        self.turns.drain(index.saturating_add(1)..self.turns.len());
 
         Ok(())
     }
@@ -502,9 +497,40 @@ mod tests {
                 position.play_unchecked(r#move);
             }
             
-            println!("get_position: {:?}", var.get_position(i).map(Position::board));
+            println!("get_position[{i}]: {:?}", var.get_position(i).map(Position::board));
             println!("correct position: {:?}", &position.board());
             assert_eq!(var.get_position(i), Some(&position));
         }
+    }
+
+    #[test_case(variation_sample0())]
+    #[test_case(variation_sample1())]
+    #[test_case(variation_sample2())]
+    #[test_case(variation_sample6())]
+    fn play_at(mut var: Variation) {
+        if var.turns().len() <= 1 {
+            if let Some(legal_move) = var.first_position().legal_moves().first() {
+                var.play_at(0, legal_move.clone()).unwrap();
+            }
+
+            get_position(&var);
+            position_before_last_move(&var);
+            position_after_last_move(&var);
+            return;
+        }
+
+        // Unwrapping here never panics because the turns length > 1 so position exists at index 1.
+        let legal_moves = var.get_position(1).unwrap().legal_moves();
+        let Some(legal_move) = legal_moves.first() else {
+            return;
+        };
+
+        var.play_at(1, legal_move.clone()).unwrap();
+
+        assert_eq!(var.turns().len(), 2);
+
+        get_position(&var);
+        position_before_last_move(&var);
+        position_after_last_move(&var);
     }
 }
