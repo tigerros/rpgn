@@ -1,6 +1,6 @@
 use pgn_reader::{RawHeader, Skip};
 use std::str::FromStr;
-use shakmaty::Chess;
+use shakmaty::{Chess, Position};
 use shakmaty::san::SanPlus;
 use crate::{Variation, Eco, pgn::{Date, Round, Outcome, Pgn}, TurnsCapacity, VariationsCapacity, VariationSanPlayError};
 
@@ -103,8 +103,8 @@ impl pgn_reader::Visitor for Visitor {
 
         let current_variation = self.variation_tree.last().map_or(&self.root_variation, |pair| &pair.1);
 
-        //println!("Beginning var: {:?}", current_variation.position_before_last_move().board());
-        let new_variation = Variation::new(current_variation.position_before_last_move().into_owned(), TurnsCapacity(50));
+        println!("Beginning var: {:?}", current_variation.position_before_last_move().board());
+        let new_variation = Variation::new(current_variation.position_before_last_move().clone(), TurnsCapacity(50));
 
         self.variation_tree.push((self.current_turn_index, new_variation));
 

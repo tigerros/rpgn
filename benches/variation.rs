@@ -49,5 +49,5 @@ pub fn read_positions(c: &mut Criterion) {
     group.finish();
 }
 
-criterion_group!(benches, read_positions);
+criterion_group!(benches, construct, read_positions);
 criterion_main!(benches);

@@ -26,8 +26,8 @@ impl PgnSample {
     }
 }
 
-pub fn variation_sample_fns() -> [fn() -> Variation; 3] {
-    [variation_sample0, variation_sample1, variation_sample2]
+pub fn variation_sample_fns() -> [fn() -> Variation; 4] {
+    [variation_sample0, variation_sample1, variation_sample2, variation_sample6]
 }
 
 pub fn pgn_samples() -> [PgnSample; 6] {
@@ -51,23 +51,17 @@ pub fn variation_sample0() -> Variation {
     let bc5_var_index =
         MoveNumber::from_color_and_number(Color::Black, NonZeroU16::new(3).unwrap()).index as usize;
     let mut bc5_var = Variation::new(
-        root_var.get_position(bc5_var_index).unwrap().into_owned(),
+        root_var.get_position(bc5_var_index).unwrap().clone(),
         TurnsCapacity(1),
     );
 
     play_san_strings!(bc5_var, "Bc5").unwrap();
 
-    let mut d4_var = Variation::new(
-        root_var.get_position(0).unwrap().into_owned(),
-        TurnsCapacity(2),
-    );
+    let mut d4_var = Variation::new(root_var.get_position(0).unwrap().clone(), TurnsCapacity(2));
 
     play_san_strings!(d4_var, "d4", "d5").unwrap();
 
-    let mut f5_var = Variation::new(
-        d4_var.position_before_last_move().into_owned(),
-        TurnsCapacity(1),
-    );
+    let mut f5_var = Variation::new(d4_var.position_before_last_move().clone(), TurnsCapacity(1));
 
     play_san_strings!(f5_var, "f5").unwrap();
 
@@ -121,6 +115,7 @@ pub fn pgn_sample0() -> PgnSample {
     )
 }
 
+/// No subvariations.
 pub fn variation_sample1() -> Variation {
     let mut root_var = Variation::new(Chess::new(), TurnsCapacity(4));
 
@@ -181,16 +176,13 @@ pub fn variation_sample2() -> Variation {
 
     play_san_strings!(d4_var, "d4", "d5").unwrap();
 
-    let mut f5_var = Variation::new(
-        d4_var.position_before_last_move().into_owned(),
-        TurnsCapacity(3),
-    );
+    let mut f5_var = Variation::new(d4_var.position_before_last_move().clone(), TurnsCapacity(3));
 
     play_san_strings!(f5_var, "f5", "g3", "Nf6").unwrap();
 
     let c4_var_index = 1;
     let mut c4_var = Variation::new(
-        f5_var.get_position(c4_var_index).unwrap().into_owned(),
+        f5_var.get_position(c4_var_index).unwrap().clone(),
         TurnsCapacity(5),
     );
 
@@ -198,7 +190,7 @@ pub fn variation_sample2() -> Variation {
 
     let g6_var_index = 3;
     let mut g6_var = Variation::new(
-        c4_var.get_position(g6_var_index).unwrap().into_owned(),
+        c4_var.get_position(g6_var_index).unwrap().clone(),
         TurnsCapacity(1),
     );
 
@@ -209,7 +201,7 @@ pub fn variation_sample2() -> Variation {
     let bc5_var_index =
         MoveNumber::from_color_and_number(Color::Black, NonZeroU16::new(3).unwrap()).index as usize;
     let mut bc5_var = Variation::new(
-        root_var.get_position(bc5_var_index).unwrap().into_owned(),
+        root_var.get_position(bc5_var_index).unwrap().clone(),
         TurnsCapacity(1),
     );
 
@@ -292,5 +284,36 @@ pub fn pgn_sample5() -> PgnSample {
             san: San::from_ascii(b"Nd2").unwrap(),
             error: SanError::AmbiguousSan,
         })),
+    )
+}
+
+/// One move only.
+pub fn variation_sample6() -> Variation {
+    let mut root_var = Variation::new(Chess::new(), TurnsCapacity(1));
+    
+    play_san_strings!(root_var, "e4").unwrap();
+    
+    root_var
+}
+
+pub fn pgn_sample6() -> PgnSample {
+    const PGN: &str = "1. e4";
+    
+    PgnSample::new(
+        PGN,
+        Ok(Pgn {
+            event: None,
+            site: None,
+            date: None,
+            round: None,
+            white: None,
+            white_elo: None,
+            black: None,
+            black_elo: None,
+            outcome: None,
+            eco: None,
+            time_control: None,
+            root_variation: Some(variation_sample6()),
+        })
     )
 }

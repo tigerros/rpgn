@@ -1,4 +1,3 @@
-use std::borrow::Cow;
 use std::fmt::{Debug, Display, Formatter, Write};
 use shakmaty::{Chess, Move, Position};
 use shakmaty::san::{San, SanError, SanPlus, Suffix};
@@ -16,25 +15,17 @@ impl Default for VariationsCapacity {
 /// A move that was played and a list of variations.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Turn {
-    position_after: Option<Chess>,
     r#move: Move,
-    variations: Vec<Variation>
+    variations: Vec<Variation>,
+    position_after: Chess,
 }
 
 impl Turn {
-    pub fn new(r#move: Move, variations_capacity: VariationsCapacity) -> Self {
+    fn new(r#move: Move, variations_capacity: VariationsCapacity, position_after: Chess) -> Self {
         Self {
-            position_after: None,
             r#move,
-            variations: Vec::with_capacity(variations_capacity.0)
-        }
-    }
-
-    fn with_position_after(r#move: Move, variations_capacity: VariationsCapacity, position_after: Chess) -> Self {
-        Self {
-            position_after: Some(position_after),
-            r#move,
-            variations: Vec::with_capacity(variations_capacity.0)
+            variations: Vec::with_capacity(variations_capacity.0),
+            position_after,
         }
     }
 
@@ -46,6 +37,10 @@ impl Turn {
         &self.variations
     }
 
+    pub const fn position_after(&self) -> &Chess {
+        &self.position_after
+    }
+
     pub fn get_variation_mut(&mut self, index: usize) -> Option<&mut Variation> {
         self.variations.get_mut(index)
     }
@@ -53,9 +48,10 @@ impl Turn {
 
 /// An always legal variation with a history of [`Turn`]s.
 ///
-/// Position indexes are treated as such: the position at index `x` is the position that occurs
-/// *before* the move at index `x` is played. If you want to get the position that occurs
-/// *after* the last move was played, use [`Variation::position_after_last_move`].
+/// Position indexes are treated as such: the position at turn index `i` is the position that occurs
+/// *before* the move at turn index `i` is played.
+/// To get the position *after* the last move was played, you can use [`Variation::position_after_last_move`],
+/// or `Variation::get_position(Variation::turns.len())`.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Variation {
     first_position: Chess,
@@ -133,75 +129,31 @@ impl Variation {
     /// Returns the position that occurs *after* the last move is played.
     ///
     /// See also [`Self::position_before_last_move`] and [`Self::get_position`].
-    pub fn position_after_last_move(&self) -> Cow<Chess> {
-        if self.turns.is_empty() {
-            return Cow::Borrowed(&self.first_position);
-        }
-
-        let mut last_position = self.first_position.clone();
-
-        for turn in &self.turns {
-            last_position.play_unchecked(&turn.r#move);
-        }
-
-        Cow::Owned(last_position)
+    pub fn position_after_last_move(&self) -> &Chess {
+        self.turns.last().map_or_else(|| self.first_position(), |last_turn| last_turn.position_after())
     }
 
-    // CLIPPY: The `unwrap` won't panic, see explanation.
-    #[allow(clippy::missing_panics_doc)]
     /// Returns the position that occurs *before* the last move is played.
     ///
     /// This is useful if you want to start a subvariation at the last turn of a variation.
     ///
     /// See also [`Self::position_after_last_move`] and [`Self::get_position`].
-    pub fn position_before_last_move(&self) -> Cow<Chess> {
-        if self.turns.is_empty() || self.turns.len() == 1 {
-            return Cow::Borrowed(&self.first_position);
-        }
-
-        let mut last_position = self.first_position.clone();
-
-        // CLIPPY: self.turns.len() > 1 because of the `is_empty` and `len` check above.
-        #[allow(clippy::arithmetic_side_effects)]
-        for turn_i in 0..self.turns.len() - 1 {
-            // CLIPPY: This for loop ensures the index is within bounds.
-            #[allow(clippy::unwrap_used)]
-            let turn = self.turns.get(turn_i).unwrap();
-            
-            last_position.play_unchecked(&turn.r#move);
-        }
-
-        Cow::Owned(last_position)
+    pub fn position_before_last_move(&self) -> &Chess {
+        self.turns.get(self.turns.len().overflowing_sub(2).0).map_or(&self.first_position, |second_last_turn| second_last_turn.position_after())
     }
 
     /// Returns the position that occurs before the turn at `index` is played,
     /// or [`None`] if the index is out of bounds.
     ///
     /// See also [`Self::position_before_last_move`] and [`Self::position_after_last_move`].
-    pub fn get_position(&self, index: usize) -> Option<Cow<Chess>> {
-        if index == 0 || self.turns.is_empty() || self.turns.len() == 1 {
-            return Some(Cow::Borrowed(&self.first_position));
-        } else if index >= self.turns.len() {
-            return None;
+    pub fn get_position(&self, index: usize) -> Option<&Chess> {
+        if index == 0 || self.turns.is_empty() {
+            Some(&self.first_position)
+        } else {
+            // CLIPPY: `index > 0`, so `index - 1 > -1`.
+            #[allow(clippy::arithmetic_side_effects)]
+            self.turns.get(index - 1).map(Turn::position_after)
         }
-
-        // CLIPPY: `index < turns.len()` and `index > 0`, so `index - 1 > -1`.
-        #[allow(clippy::arithmetic_side_effects)]
-        if let Some(cached_position) = self.turns.get(index - 1).and_then(|turn| turn.position_after.as_ref()) {
-            return Some(Cow::Borrowed(cached_position));
-        }
-
-        let mut requested_position = self.first_position.clone();
-
-        for (turn_i, turn) in self.turns.iter().enumerate() {
-            if index == turn_i {
-                break;
-            }
-
-            requested_position.play_unchecked(&turn.r#move);
-        }
-
-        Some(Cow::Owned(requested_position))
     }
 
     /// Equivalent to [`Vec::get_mut`].
@@ -211,25 +163,25 @@ impl Variation {
         self.turns.get_mut(index)
     }
 
-    /// Attempts to play a turn in the last position.
+    /// Attempts to play a move in the last position.
     ///
     /// # Errors
     ///
     /// See [`VariationPlayError`].
-    pub fn play(&mut self, mut turn: Turn) -> Result<(), VariationPlayError> {
+    pub fn play(&mut self, r#move: Move, variations_capacity: VariationsCapacity) -> Result<(), VariationPlayError> {
         let position_after_last_move = self.position_after_last_move();
-        if !position_after_last_move.is_legal(&turn.r#move) {
+        if !position_after_last_move.is_legal(&r#move) {
             return Err(VariationPlayError {
                 turn_index: self.turns.len(),
-                r#move: turn.r#move
+                r#move
             });
         }
 
-        let mut new_position = position_after_last_move.into_owned();
+        let mut new_position = position_after_last_move.clone();
+        new_position.play_unchecked(&r#move);
 
-        new_position.play_unchecked(&turn.r#move);
-        turn.position_after = Some(new_position);
-        self.turns.push(turn);
+        self.turns.push(Turn::new(r#move, variations_capacity, new_position));
+
         Ok(())
     }
 
@@ -240,17 +192,16 @@ impl Variation {
     /// See [`VariationSanPlayError`]. `at_position` is set to the last turn index in this variation.
     pub fn play_san(&mut self, san: &San, variations_capacity: VariationsCapacity) -> Result<(), VariationSanPlayError> {
         let position_after_last_move = self.position_after_last_move();
-        let r#move = san.to_move(&*position_after_last_move).map_err(|error| VariationSanPlayError {
+        let r#move = san.to_move(position_after_last_move).map_err(|error| VariationSanPlayError {
             turn_index: self.turns.len().saturating_sub(1),
             san: san.clone(),
             error,
         })?;
 
-        let mut new_position = position_after_last_move.into_owned();
-
+        let mut new_position = position_after_last_move.clone();
         new_position.play_unchecked(&r#move);
 
-        self.turns.push(Turn::with_position_after(r#move, variations_capacity, new_position));
+        self.turns.push(Turn::new(r#move, variations_capacity, new_position));
 
         Ok(())
     }
@@ -299,7 +250,7 @@ impl Variation {
     ///
     /// See [`PlaySanAtError`].
     pub fn play_san_at(&mut self, index: usize, san: &San) -> Result<(), PlaySanAtError> {
-        let r#move = san.to_move(&*self.get_position(index).ok_or(PlaySanAtError::NoTurnAt { index })?).map_err(|error| PlaySanAtError::PlayError(VariationSanPlayError {
+        let r#move = san.to_move(self.get_position(index).ok_or(PlaySanAtError::NoTurnAt { index })?).map_err(|error| PlaySanAtError::PlayError(VariationSanPlayError {
             turn_index: index,
             san: san.clone(),
             error,
@@ -336,7 +287,7 @@ impl Variation {
     ///
     /// See [`InsertVariationError`].
     pub fn insert_variation(&mut self, index: usize, variation: Self) -> Result<(), InsertVariationError> {
-        let position_at_index = self.get_position(index).ok_or(InsertVariationError::NoSuchTurn { index })?.into_owned();
+        let position_at_index = self.get_position(index).ok_or(InsertVariationError::NoSuchTurn { index })?.clone();
 
         if variation.first_position != position_at_index {
             return Err(InsertVariationError::PositionDoesNotMatch {
@@ -359,10 +310,6 @@ fn fmt(f: &mut Formatter<'_>, mut move_number: MoveNumber, variation: &Variation
         // CLIPPY: The above for loop ensures the index is within bounds.
         #[allow(clippy::unwrap_used)]
         let Turn { position_after, r#move, variations: subvariations } = variation.turns.get(turn_i).unwrap();
-        #[allow(clippy::unwrap_used)]
-        // + 1 index because we want the position *after* the move for the suffix.
-        // You would think that would mess up `San::from_move`, but nope. Tests pass.
-        let position = position_after.as_ref().map_or_else(|| variation.get_position(turn_i.saturating_add(1)).unwrap_or_else(|| variation.position_after_last_move()), Cow::Borrowed);
 
         if very_first_move {
             very_first_move = false;
@@ -378,9 +325,11 @@ fn fmt(f: &mut Formatter<'_>, mut move_number: MoveNumber, variation: &Variation
             f.write_str("... ")?;
         }
 
+        // You would think that using the position *after* the move would mess up `San::from_move`,
+        // but nope. Tests pass.
         f.write_str(&SanPlus {
-            san: San::from_move(&*position, r#move),
-            suffix: Suffix::from_position(&*position),
+            san: San::from_move(position_after, r#move),
+            suffix: Suffix::from_position(position_after),
         }.to_string())?;
 
         for subvariation in subvariations {
@@ -489,3 +438,72 @@ pub(crate) use play_sans;
 #[allow(unused_imports)]
 pub(crate) use play_san_strings;
 use crate::MoveNumber;
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used)]
+#[allow(clippy::print_stdout)]
+mod tests {
+    use super::*;
+    use crate::samples::*;
+    use test_case::test_case;
+    use pretty_assertions::assert_eq;
+    
+    #[test_case(&variation_sample0())]
+    #[test_case(&variation_sample1())]
+    #[test_case(&variation_sample2())]
+    #[test_case(&variation_sample6())]
+    fn position_before_last_move(var: &Variation) {
+        let mut position = var.first_position.clone();
+        
+        for turn_i in 0..var.turns.len().saturating_sub(1) {
+            // CLIPPY: `turn_i` is within bounds.
+            #[allow(clippy::indexing_slicing)]
+            let turn = &var.turns[turn_i];
+            
+            position.play_unchecked(turn.r#move());
+        }
+        
+        println!("position_before_last_move: {:?}", var.position_before_last_move().board());
+        println!("correct position: {:?}", position.board());
+        
+        assert_eq!(var.position_before_last_move(), &position);
+    }
+
+    #[test_case(&variation_sample0())]
+    #[test_case(&variation_sample1())]
+    #[test_case(&variation_sample2())]
+    #[test_case(&variation_sample6())]
+    fn position_after_last_move(var: &Variation) {
+        let mut position = var.first_position.clone();
+
+        for turn in var.turns() {
+            position.play_unchecked(turn.r#move());
+        }
+
+        println!("position_after_last_move: {:?}", var.position_after_last_move().board());
+        println!("correct position: {:?}", position.board());
+
+        assert_eq!(var.position_after_last_move(), &position);
+    }
+    
+    #[test_case(&variation_sample0())]
+    #[test_case(&variation_sample1())]
+    #[test_case(&variation_sample2())]
+    #[test_case(&variation_sample6())]
+    fn get_position(var: &Variation) {
+        for i in 0..=var.turns().len() {
+            let mut position = Chess::new();
+
+            // CLIPPY: Maximum value of `i` is `turns.len()`.
+            // Ranges are exclusive. Therefore this range (inclusive) is `0..turns.len - 1`, which is always valid.
+            #[allow(clippy::indexing_slicing)]
+            for r#move in var.turns()[0..i].iter().map(Turn::r#move) {
+                position.play_unchecked(r#move);
+            }
+            
+            println!("get_position: {:?}", var.get_position(i).map(Position::board));
+            println!("correct position: {:?}", &position.board());
+            assert_eq!(var.get_position(i), Some(&position));
+        }
+    }
+}
