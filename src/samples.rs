@@ -27,7 +27,12 @@ impl PgnSample {
 }
 
 pub fn variation_sample_fns() -> [fn() -> Variation; 4] {
-    [variation_sample0, variation_sample1, variation_sample2, variation_sample6]
+    [
+        variation_sample0,
+        variation_sample1,
+        variation_sample2,
+        variation_sample6,
+    ]
 }
 
 pub fn pgn_samples() -> [PgnSample; 6] {
@@ -290,15 +295,15 @@ pub fn pgn_sample5() -> PgnSample {
 /// One move only.
 pub fn variation_sample6() -> Variation {
     let mut root_var = Variation::new(Chess::new(), TurnsCapacity(1));
-    
+
     play_san_strings!(root_var, "e4").unwrap();
-    
+
     root_var
 }
 
 pub fn pgn_sample6() -> PgnSample {
     const PGN: &str = "1. e4";
-    
+
     PgnSample::new(
         PGN,
         Ok(Pgn {
@@ -314,6 +319,6 @@ pub fn pgn_sample6() -> PgnSample {
             eco: None,
             time_control: None,
             root_variation: Some(variation_sample6()),
-        })
+        }),
     )
 }

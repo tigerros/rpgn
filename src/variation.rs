@@ -170,6 +170,7 @@ impl Variation {
     /// See [`VariationPlayError`].
     pub fn play(&mut self, r#move: Move, variations_capacity: VariationsCapacity) -> Result<(), VariationPlayError> {
         let position_after_last_move = self.position_after_last_move();
+        
         if !position_after_last_move.is_legal(&r#move) {
             return Err(VariationPlayError {
                 turn_index: self.turns.len(),
@@ -242,7 +243,7 @@ impl Variation {
         Ok(())
     }
 
-    // CLIPPY: All panics are explained.
+    // CLIPPY: This function never panics; all panicking functions are explained.
     #[allow(clippy::missing_panics_doc)]
     /// See [`Self::play_at`].
     ///
