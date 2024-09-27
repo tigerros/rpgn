@@ -4,9 +4,9 @@ use std::str::FromStr;
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub struct Date {
-    year: Option<u16>,
-    month: Option<NonZeroU8>,
-    day: Option<NonZeroU8>
+    pub year: Option<u16>,
+    pub month: Option<NonZeroU8>,
+    pub day: Option<NonZeroU8>
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
