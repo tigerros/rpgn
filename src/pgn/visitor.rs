@@ -94,12 +94,8 @@ impl pgn_reader::Visitor for Visitor {
         if self.result.is_err() {
             return Skip(true);
         }
-
-        // CLIPPY: There's never going to be usize::MAX moves.
-        #[allow(clippy::arithmetic_side_effects)]
-        {
-            self.current_turn_index -= 1;
-        }
+        
+        self.current_turn_index = self.current_turn_index.saturating_sub(1);
 
         let current_variation = self.variation_tree.last().map_or(&self.root_variation, |pair| &pair.1);
         let new_variation = Variation::new(current_variation.position_before_last_move().clone(), TurnsCapacity(50));
