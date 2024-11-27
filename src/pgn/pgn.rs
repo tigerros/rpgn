@@ -4,7 +4,7 @@ use pgn_reader::BufferedReader;
 use super::visitor::Visitor;
 use crate::{Eco, pgn::{Outcome, Date, Round}, Variation, VariationSanPlayError};
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Pgn {
     pub event: Option<String>,
     pub site: Option<String>,

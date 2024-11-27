@@ -13,7 +13,7 @@ impl Default for VariationsCapacity {
 }
 
 /// A move that was played and a list of variations.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Turn {
     r#move: Move,
     variations: Vec<Variation>,
@@ -52,7 +52,7 @@ impl Turn {
 /// *before* the move at turn index `i` is played.
 /// To get the position *after* the last move was played, you can use [`Variation::position_after_last_move`],
 /// or `Variation::get_position(Variation::turns.len())`.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Variation {
     first_position: Chess,
     turns: Vec<Turn>,

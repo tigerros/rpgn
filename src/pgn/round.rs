@@ -1,7 +1,7 @@
 use std::fmt::{Display, Formatter, Write};
 use std::str::FromStr;
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Round {
     Normal(u32),
     Multipart(Vec<u32>),

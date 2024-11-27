@@ -2,7 +2,7 @@ use std::fmt::{Display, Formatter, Write};
 use std::num::NonZeroU8;
 use std::str::FromStr;
 
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
 pub struct Date {
     pub year: Option<u16>,
     pub month: Option<NonZeroU8>,

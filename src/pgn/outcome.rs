@@ -3,7 +3,7 @@ use std::str::FromStr;
 use shakmaty::Color;
 
 /// This is like [`shakmaty::Outcome`], but with an additional variant: [`Outcome::Other`].
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Outcome {
     Decisive { winner: Color },
     Draw,
