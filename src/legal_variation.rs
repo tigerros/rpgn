@@ -16,7 +16,7 @@ impl Default for VariationsCapacity {
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Turn {
     r#move: Move,
-    variations: Vec<Variation>,
+    variations: Vec<LegalVariation>,
     position_after: Chess,
 }
 
@@ -33,7 +33,7 @@ impl Turn {
         &self.r#move
     }
 
-    pub const fn variations(&self) -> &Vec<Variation> {
+    pub const fn variations(&self) -> &Vec<LegalVariation> {
         &self.variations
     }
 
@@ -41,19 +41,20 @@ impl Turn {
         &self.position_after
     }
 
-    pub fn get_variation_mut(&mut self, index: usize) -> Option<&mut Variation> {
+    pub fn get_variation_mut(&mut self, index: usize) -> Option<&mut LegalVariation> {
         self.variations.get_mut(index)
     }
 }
 
 /// An always legal variation with a history of [`Turn`]s.
+/// Variants are not supported (except Chess960).
 ///
 /// Position indexes are treated as such: the position at turn index `i` is the position that occurs
 /// *before* the move at turn index `i` is played.
-/// To get the position *after* the last move was played, you can use [`Variation::position_after_last_move`],
+/// To get the position *after* the last move was played, you can use [`LegalVariation::position_after_last_move`],
 /// or `Variation::get_position(Variation::turns.len())`.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct Variation {
+pub struct LegalVariation {
     first_position: Chess,
     turns: Vec<Turn>,
 }
@@ -93,28 +94,19 @@ pub struct VariationPlayError {
     pub r#move: Move,
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct VariationSanPlayError {
     pub turn_index: usize,
     pub san: San,
     pub error: SanError
 }
 
-#[derive(Debug, Clone, Copy)]
-pub struct TurnsCapacity(pub usize);
-
-impl Default for TurnsCapacity {
-    /// 100
-    fn default() -> Self {
-        Self(100)
-    }
-}
-
-impl Variation {
-    pub fn new(first_position: Chess, turns_capacity: TurnsCapacity) -> Self {
+impl LegalVariation {
+    /// Default turns capacity is 0.
+    pub fn new(first_position: Chess, turns_capacity: Option<usize>) -> Self {
         Self {
             first_position,
-            turns: Vec::with_capacity(turns_capacity.0),
+            turns: Vec::with_capacity(turns_capacity.unwrap_or(0)),
         }
     }
 
@@ -301,7 +293,7 @@ impl Variation {
     }
 }
 
-fn fmt(f: &mut Formatter<'_>, mut move_number: MoveNumber, variation: &Variation, mut very_first_move: bool) -> std::fmt::Result {
+fn fmt(f: &mut Formatter<'_>, mut move_number: MoveNumber, variation: &LegalVariation, mut very_first_move: bool) -> std::fmt::Result {
     for turn_i in 0..variation.turns.len() {
         // CLIPPY: The above for loop ensures the index is within bounds.
         #[allow(clippy::unwrap_used)]
@@ -344,7 +336,7 @@ fn fmt(f: &mut Formatter<'_>, mut move_number: MoveNumber, variation: &Variation
     Ok(())
 }
 
-impl Display for Variation {
+impl Display for LegalVariation {
     /// Displays the PGN movelist representation of this variation.
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         fmt(f, MoveNumber::MIN, self, true)
@@ -359,8 +351,8 @@ macro_rules! play_moves {
     ($variation:expr, $($r#move:expr),*) => {
         {
             use ::shakmaty::{PlayError, Chess};
-            use $crate::Variation;
-            fn play_moves(variation: &mut Variation) -> Result<(), PlayError<Chess>> {
+            use $crate:Variationn;
+            fn play_moves(variation: &mut LegalVariation) -> Result<(), PlayError<Chess>> {
                 $(
                 variation.play($r#move)?;
                 )*
@@ -381,8 +373,8 @@ macro_rules! play_sans {
     ($variation:expr, $($san:expr),*) => {
         {
             use ::shakmaty::san::SanError;
-            use $crate::{Variation, VariationsCapacity};
-            fn play_sans(variation: &mut Variation) -> Result<(), SanError> {
+            use $crate::{LegalVariation, VariationsCapacity};
+            fn play_sans(variation: &mut LegalVariation) -> Result<(), SanError> {
                 $(
                 variation.play_san($san, VariationsCapacity::default())?;
                 )*
@@ -410,8 +402,8 @@ macro_rules! play_san_strings {
         {
             use ::shakmaty::san::San;
             use ::std::str::FromStr;
-            use $crate::{Variation, VariationSanPlayError, VariationsCapacity};
-            fn play_sans(variation: &mut Variation) -> Result<(), VariationSanPlayError> {
+            use $crate::{LegalVariation, VariationSanPlayError, VariationsCapacity};
+            fn play_sans(variation: &mut LegalVariation) -> Result<(), VariationSanPlayError> {
                 $(
                 variation.play_san(&San::from_str($san_string).unwrap(), VariationsCapacity::default())?;
                 )*
@@ -448,7 +440,7 @@ mod tests {
     #[test_case(&variation_sample1())]
     #[test_case(&variation_sample2())]
     #[test_case(&variation_sample6())]
-    fn position_before_last_move(var: &Variation) {
+    fn position_before_last_move(var: &LegalVariation) {
         let mut position = var.first_position.clone();
         
         for turn_i in 0..var.turns.len().saturating_sub(1) {
@@ -469,7 +461,7 @@ mod tests {
     #[test_case(&variation_sample1())]
     #[test_case(&variation_sample2())]
     #[test_case(&variation_sample6())]
-    fn position_after_last_move(var: &Variation) {
+    fn position_after_last_move(var: &LegalVariation) {
         let mut position = var.first_position.clone();
 
         for turn in var.turns() {
@@ -486,7 +478,7 @@ mod tests {
     #[test_case(&variation_sample1())]
     #[test_case(&variation_sample2())]
     #[test_case(&variation_sample6())]
-    fn get_position(var: &Variation) {
+    fn get_position(var: &LegalVariation) {
         for i in 0..=var.turns().len() {
             let mut position = Chess::new();
 
@@ -507,7 +499,7 @@ mod tests {
     #[test_case(variation_sample1())]
     #[test_case(variation_sample2())]
     #[test_case(variation_sample6())]
-    fn play_at(mut var: Variation) {
+    fn play_at(mut var: LegalVariation) {
         if var.turns().len() <= 1 {
             if let Some(legal_move) = var.first_position().legal_moves().first() {
                 var.play_at(0, legal_move.clone()).unwrap();

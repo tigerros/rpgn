@@ -1,30 +1,36 @@
+use std::env::var;
 use std::fmt::{Display, Formatter, Write};
 use std::io::Read;
+use std::str::FromStr;
 use pgn_reader::BufferedReader;
-use super::visitor::Visitor;
-use crate::{Eco, pgn::{Outcome, Date, Round}, Variation, VariationSanPlayError};
+use shakmaty::fen::{Fen, ParseFenError};
+use super::visitor::{Visitor, RawOwnedHeader, RootVariationError};
+use crate::{Eco, pgn::{Outcome, Date, Round}, LegalVariation, VariationSanPlayError};
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Pgn {
-    pub event: Option<String>,
-    pub site: Option<String>,
-    pub date: Option<Date>,
-    pub round: Option<Round>,
-    pub white: Option<String>,
-    pub white_elo: Option<u16>,
-    pub black: Option<String>,
-    pub black_elo: Option<u16>,
-    pub outcome: Option<Outcome>,
-    pub eco: Option<Eco>,
+    pub event: Option<RawOwnedHeader>,
+    pub site: Option<RawOwnedHeader>,
+    pub date: Option<Result<Date, <Date as FromStr>::Err>>,
+    pub round: Option<Result<Round, <Round as FromStr>::Err>>,
+    pub white: Option<RawOwnedHeader>,
+    pub white_elo: Option<Result<u16, <u16 as FromStr>::Err>>,
+    pub black: Option<RawOwnedHeader>,
+    pub black_elo: Option<Result<u16, <u16 as FromStr>::Err>>,
+    /// Called "Result" in the PGN standard.
+    pub outcome: Option<Result<Outcome, <Outcome as FromStr>::Err>>,
+    pub eco: Option<Result<Eco, <Eco as FromStr>::Err>>,
     // TODO: Make a time control type
-    pub time_control: Option<String>,
-    pub root_variation: Option<Variation>,
+    pub time_control: Option<RawOwnedHeader>,
+    /// Note that this FEN may not be a legal position.
+    pub fen: Option<Result<Fen, ParseFenError>>,
+    pub root_variation: Option<Result<LegalVariation, (RootVariationError, String)>>,
 }
 
 #[derive(Debug)]
 pub enum PgnParseError {
     Io(std::io::Error),
-    SanError(VariationSanPlayError)
+    PgnError(PgnError),
 }
 
 impl Pgn {
@@ -61,7 +67,7 @@ impl Pgn {
             match result {
                 Ok(Some(())) => match pgn_visitor.into_pgn() {
                     Ok(pgn) => pgns.push(Ok(pgn)),
-                    Err(e) => pgns.push(Err(PgnParseError::SanError(e))),
+                    Err(e) => pgns.push(Err(PgnParseError::PgnError(e))),
                 },
                 Err(e) => pgns.push(Err(PgnParseError::Io(e))),
                 // Empty reader
@@ -122,12 +128,12 @@ impl Display for Pgn {
         push_pgn_header!(non_str_display: eco, "ECO");
         push_pgn_header!(time_control);
 
-        let Some(root_variation) = &self.root_variation else {
+        let Some(move_list) = &self.root_variation else {
             return Ok(());
         };
 
         f.write_char('\n')?;
-        f.write_str(&root_variation.to_string())
+        move_list.fmt(f)
     }
 }
 
@@ -167,7 +173,7 @@ mod tests {
                 // Put `e1` on the right side of the assert because that is the "correct" side.
                 match (e1, e2) {
                     (PgnParseError::Io(e1), PgnParseError::Io(e2)) => assert_eq!(e2.to_string(), e1.to_string()),
-                    (PgnParseError::SanError(e1), PgnParseError::SanError(e2)) => assert_eq!(e2, &e1),
+                    (PgnParseError::PgnError(PgnError::SanPlayError(e1)), PgnParseError::PgnError(PgnError::SanPlayError(e2))) => assert_eq!(e2, &e1),
                     _ => panic!("errors are not the same variant")
                 }
             }

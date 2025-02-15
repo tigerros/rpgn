@@ -6,6 +6,8 @@
 
 # RPGN
 
+*Note: this is not a complete implementation of the PGN standard.*
+
 <ins>R</ins>ust <ins>P</ins>ortable <ins>G</ins>ame <ins>N</ins>otation.
 
 A crate for parsing a PGN, built on [`shakmaty`](https://crates.io/crates/shakmaty) and [`pgn-reader`](https://crates.io/crates/pgn-reader).

@@ -34,11 +34,13 @@ mod concat_strings;
 pub(crate) use concat_strings::concat_strings;
 dry_mods::mods! {
     mod pub use move_number,
-    variation,
+    legal_variation,
     eco,
     eco_category,
     time_control_field;
     pub mod pgn;
 }
 pub mod samples;
-pub use pgn::{Pgn, PgnParseError};
+mod legal_move_list;
+
+pub use pgn::{Pgn, PgnError};
