@@ -7,7 +7,7 @@
 # RPGN
 
 *Note: this is not a complete implementation of the PGN standard.*
-*This branch is
+*Note: This branch is a WIP cleanup of the previous version, which was incorrect, slow, and convoluted.*
 
 <ins>R</ins>ust <ins>P</ins>ortable <ins>G</ins>ame <ins>N</ins>otation.
 
