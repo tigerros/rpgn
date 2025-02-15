@@ -34,7 +34,6 @@ mod concat_strings;
 pub(crate) use concat_strings::concat_strings;
 dry_mods::mods! {
     mod pub use move_number,
-    legal_variation,
     eco,
     eco_category,
     time_control_field;
@@ -42,5 +41,6 @@ dry_mods::mods! {
 }
 pub mod samples;
 mod legal_move_list;
+mod san_list;
 
-pub use pgn::{Pgn, PgnError};
+pub use pgn::Pgn;

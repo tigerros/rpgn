@@ -4,24 +4,31 @@
 #![allow(clippy::unwrap_used)]
 #![allow(clippy::unreachable)]
 #![allow(clippy::missing_panics_doc)]
-use crate::pgn::PgnParseError;
-use crate::legal_variation::play_san_strings;
 use crate::{
     pgn::{Date, Outcome, Round},
-    Eco, EcoCategory, MoveNumber, Pgn, PgnError, TurnsCapacity, LegalVariation, VariationSanPlayError,
+    Eco, EcoCategory, MoveNumber, Pgn,
 };
-use shakmaty::san::{San, SanError};
+use shakmaty::san::{San, SanError, SanPlus};
 use shakmaty::{Chess, Color};
 use std::num::{NonZeroU8, NonZeroUsize};
+use std::io;
+use crate::san_list::SanList;
+
+macro_rules! san_list {
+    ($($san:literal),+) => {
+        #[allow(clippy::unwrap_used)]
+        { SanList(vec![$(SanPlus::from_ascii($san).unwrap()),+]) }
+    };
+}
 
 #[derive(Debug)]
 pub struct PgnSample {
     pub string: &'static str,
-    pub parsed: Result<Pgn, PgnParseError>,
+    pub parsed: Result<Pgn, io::Error>,
 }
 
 impl PgnSample {
-    pub const fn new(string: &'static str, parsed: Result<Pgn, PgnParseError>) -> Self {
+    pub const fn new(string: &'static str, parsed: Result<Pgn, io::Error>) -> Self {
         Self { string, parsed }
     }
 }
@@ -92,6 +99,8 @@ pub fn pgn_sample0() -> PgnSample {
 
 1. e4 ( 1. d4 1... d5 ( 1... f5 ) ) 1... e5 2. Nf3 2... Nc6 3. Bc4 3... Nf6 ( 3... Bc5 ) 4. Nc3"#;
 
+    let san_list = san_list!("e4", "e5", "Nf3", "Nc6", "Bc4", "Nf6", "Nc3");
+
     PgnSample::new(
         PGN,
         Ok(Pgn {
@@ -115,7 +124,7 @@ pub fn pgn_sample0() -> PgnSample {
             black_elo: Some(1565),
             eco: Some(Eco::new(EcoCategory::C, 50).unwrap()),
             time_control: Some("600+0".to_string()),
-            root_variation: Some(variation_sample0()),
+            san_list: Some(variation_sample0()),
         }),
     )
 }
@@ -167,7 +176,7 @@ pub fn pgn_sample1() -> PgnSample {
             round: Some(Round::Multipart(vec![3, 1, 2])),
             eco: Some(Eco::new(EcoCategory::A, 00).unwrap()),
             time_control: Some("600+2".to_string()),
-            root_variation: Some(variation_sample1()),
+            san_list: Some(variation_sample1()),
         }),
     )
 }
@@ -245,7 +254,7 @@ pub fn pgn_sample2() -> PgnSample {
             black_elo: None,
             eco: Some(Eco::new(EcoCategory::C, 50).unwrap()),
             time_control: None,
-            root_variation: Some(variation_sample2()),
+            san_list: Some(variation_sample2()),
         }),
     )
 }
@@ -324,7 +333,7 @@ pub fn pgn_sample6() -> PgnSample {
             outcome: None,
             eco: None,
             time_control: None,
-            root_variation: Some(variation_sample6()),
+            san_list: Some(variation_sample6()),
         }),
     )
 }

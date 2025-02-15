@@ -6,7 +6,7 @@ pub fn to_pgn(c: &mut Criterion) {
     let mut group = c.benchmark_group("to_pgn");
 
     for pgn in pgn_samples().iter().filter_map(|s| s.parsed.as_ref().ok()) {
-        let turns = pgn.root_variation.as_ref().unwrap().turns();
+        let turns = pgn.san_list.as_ref().unwrap().turns();
         let mut id = String::with_capacity(5 * 2 + 1);
 
         id.push_str(&turns.first().unwrap().r#move().to_string().replace('-', ""));
@@ -28,7 +28,7 @@ pub fn from_pgn(c: &mut Criterion) {
         .iter()
         .filter_map(|s| s.parsed.as_ref().ok().map(|p| (s.string, p)))
     {
-        let turns = pgn.root_variation.as_ref().unwrap().turns();
+        let turns = pgn.san_list.as_ref().unwrap().turns();
         let mut id = String::with_capacity(5 * 2 + 1);
 
         id.push_str(&turns.first().unwrap().r#move().to_string().replace('-', ""));

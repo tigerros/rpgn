@@ -4,8 +4,10 @@ use std::io::Read;
 use std::str::FromStr;
 use pgn_reader::BufferedReader;
 use shakmaty::fen::{Fen, ParseFenError};
-use super::visitor::{Visitor, RawOwnedHeader, RootVariationError};
-use crate::{Eco, pgn::{Outcome, Date, Round}, LegalVariation, VariationSanPlayError};
+use super::visitor::{Visitor, RawOwnedHeader};
+use crate::{Eco, pgn::{Outcome, Date, Round}};
+use crate::concat_strings::concat_strings;
+use crate::san_list::SanList;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Pgn {
@@ -24,13 +26,7 @@ pub struct Pgn {
     pub time_control: Option<RawOwnedHeader>,
     /// Note that this FEN may not be a legal position.
     pub fen: Option<Result<Fen, ParseFenError>>,
-    pub root_variation: Option<Result<LegalVariation, (RootVariationError, String)>>,
-}
-
-#[derive(Debug)]
-pub enum PgnParseError {
-    Io(std::io::Error),
-    PgnError(PgnError),
+    pub san_list: SanList,
 }
 
 impl Pgn {
@@ -41,7 +37,7 @@ impl Pgn {
     ///
     /// These are errors for every item in the `Vec`. This function does not error itself.
     /// See [`PgnParseError`].
-    pub fn from_str(pgn: &str) -> Vec<Result<Self, PgnParseError>> {
+    pub fn from_str(pgn: &str) -> Vec<Result<Self, std::io::Error>> {
         let mut reader = pgn_reader::BufferedReader::new_cursor(pgn);
         
         Self::from_reader(&mut reader)
@@ -56,7 +52,7 @@ impl Pgn {
     /// 
     /// These are errors for every item in the `Vec`. This function does not error itself.
     /// See [`PgnParseError`].
-    pub fn from_reader<R>(reader: &mut BufferedReader<R>) -> Vec<Result<Self, PgnParseError>> where R: Read {
+    pub fn from_reader<R>(reader: &mut BufferedReader<R>) -> Vec<Result<Self, std::io::Error>> where R: Read {
         let mut pgns = Vec::new();
 
         loop {
@@ -65,11 +61,8 @@ impl Pgn {
             let result = reader.read_game(&mut pgn_visitor);
 
             match result {
-                Ok(Some(())) => match pgn_visitor.into_pgn() {
-                    Ok(pgn) => pgns.push(Ok(pgn)),
-                    Err(e) => pgns.push(Err(PgnParseError::PgnError(e))),
-                },
-                Err(e) => pgns.push(Err(PgnParseError::Io(e))),
+                Ok(Some(())) => pgns.push(Ok(pgn_visitor.into_pgn())),
+                Err(e) => pgns.push(Err(e)),
                 // Empty reader
                 Ok(None) => break,
             }
@@ -83,32 +76,16 @@ impl Display for Pgn {
     /// Returns the string representation of this PGN.
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         macro_rules! push_pgn_header {
-            ($field_name:ident) => {
-                if let Some($field_name) = &self.$field_name {
-                    paste::paste! {
-                        f.write_str(&crate::concat_strings!("[", stringify!([<$field_name:camel>]), " \"", $field_name, "\"]\n"))?;
-                    }
-                }
-            };
-
             ($field_name:ident, $header_title:expr) => {
                 if let Some($field_name) = &self.$field_name {
                     paste::paste! {
-                        f.write_str(&crate::concat_strings!("[", $header_title, " \"", $field_name, "\"]\n"))?;
+                        f.write_str(&crate::concat_strings!("[", $header_title, " \"", &$field_name.decode_utf8_lossy(), "\"]\n"))?;
                     }
                 }
             };
 
-            (non_str_display: $field_name:ident) => {
-                if let Some($field_name) = &self.$field_name {
-                    paste::paste! {
-                        f.write_str(&crate::concat_strings!("[", stringify!([<$field_name:camel>]), " \"", &$field_name.to_string(), "\"]\n"))?;
-                    }
-                }
-            };
-
-            (non_str_display: $field_name:ident, $header_title:expr) => {
-                if let Some($field_name) = &self.$field_name {
+            (custom_type: $field_name:ident, $header_title:expr) => {
+                if let Some(Ok($field_name)) = &self.$field_name {
                     paste::paste! {
                         f.write_str(&crate::concat_strings!("[", $header_title, " \"", &$field_name.to_string(), "\"]\n"))?;
                     }
@@ -116,24 +93,24 @@ impl Display for Pgn {
             };
         }
 
-        push_pgn_header!(event);
-        push_pgn_header!(site);
-        push_pgn_header!(non_str_display: date);
-        push_pgn_header!(non_str_display: round);
-        push_pgn_header!(white);
-        push_pgn_header!(black);
-        push_pgn_header!(non_str_display: outcome, "Result");
-        push_pgn_header!(non_str_display: white_elo);
-        push_pgn_header!(non_str_display: black_elo);
-        push_pgn_header!(non_str_display: eco, "ECO");
-        push_pgn_header!(time_control);
+        push_pgn_header!(event, "Event");
+        push_pgn_header!(site, "Site");
+        push_pgn_header!(custom_type: date, "Date");
+        push_pgn_header!(custom_type: round, "Round");
+        push_pgn_header!(white, "White");
+        push_pgn_header!(black, "Black");
+        push_pgn_header!(custom_type: outcome, "Result");
+        push_pgn_header!(custom_type: white_elo, "WhiteElo");
+        push_pgn_header!(custom_type: black_elo, "BlackElo");
+        push_pgn_header!(custom_type: eco, "ECO");
+        push_pgn_header!(time_control, "TimeControl");
 
-        let Some(move_list) = &self.root_variation else {
+        if self.san_list.0.is_empty() {
             return Ok(());
-        };
+        }
 
         f.write_char('\n')?;
-        move_list.fmt(f)
+        self.san_list.fmt(f)
     }
 }
 
@@ -171,11 +148,7 @@ mod tests {
                 };
 
                 // Put `e1` on the right side of the assert because that is the "correct" side.
-                match (e1, e2) {
-                    (PgnParseError::Io(e1), PgnParseError::Io(e2)) => assert_eq!(e2.to_string(), e1.to_string()),
-                    (PgnParseError::PgnError(PgnError::SanPlayError(e1)), PgnParseError::PgnError(PgnError::SanPlayError(e2))) => assert_eq!(e2, &e1),
-                    _ => panic!("errors are not the same variant")
-                }
+                assert_eq!(e2.to_string(), e1.to_string())
             }
         }
     }

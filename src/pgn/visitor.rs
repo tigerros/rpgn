@@ -4,13 +4,8 @@ use std::str::{FromStr, Utf8Error};
 use shakmaty::{CastlingMode, Chess, Position, PositionError};
 use shakmaty::fen::{Fen, ParseFenError};
 use shakmaty::san::SanPlus;
-use crate::{LegalVariation, Eco, pgn::{Date, Round, Outcome, Pgn}, TurnsCapacity, VariationsCapacity, VariationSanPlayError};
-
-#[derive(Clone, Debug)]
-pub enum RootVariationError {
-    InvalidFenPosition(PositionError<Chess>),
-    SanPlayError(VariationSanPlayError),
-}
+use crate::{Eco, pgn::{Date, Round, Outcome, Pgn}};
+use crate::san_list::SanList;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 /// Has functions of the [`pgn_reader::RawHeader`], but has ownership of the bytes.
@@ -47,10 +42,7 @@ pub(super) struct Visitor {
     eco: Option<Result<Eco, <Eco as FromStr>::Err>>,
     time_control: Option<RawOwnedHeader>,
     fen: Option<Result<Fen, ParseFenError>>,
-    variation_tree: Vec<(usize, LegalVariation)>,
-    current_turn_index: usize,
-    movetext_string: String,
-    root_variation: Option<Result<LegalVariation, RootVariationError>>,
+    san_list: SanList,
 }
 
 impl Visitor {
@@ -68,10 +60,7 @@ impl Visitor {
             eco: None,
             time_control: None,
             fen: None,
-            variation_tree: Vec::with_capacity(0),
-            current_turn_index: 0,
-            movetext_string: String::new(),
-            root_variation: None,
+            san_list: SanList(Vec::with_capacity(0)),
         }
     }
 
@@ -96,11 +85,7 @@ impl Visitor {
             eco: self.eco,
             time_control: self.time_control,
             fen: self.fen,
-            root_variation: match self.root_variation {
-                None => None,
-                Some(Ok(variation)) => Some(Ok(variation)),
-                Some(Err(e)) => Some(Err((e, self.movetext_string)))
-            }
+            san_list: self.san_list,
         }
     }
 }
@@ -125,104 +110,9 @@ impl pgn_reader::Visitor for Visitor {
             _ => {},
         }
     }
-
-    fn begin_game(&mut self) {
-        if let Some(Ok(fen)) = &self.fen {
-            match fen.clone().into_position(CastlingMode::detect(&fen.as_setup().clone())) {
-                Ok(position) => self.root_variation = Some(Ok(LegalVariation::new(position, TurnsCapacity::default()))),
-                Err(e) => self.root_variation = Some(Err(RootVariationError::InvalidFenPosition(e))),
-            }
-        } else {
-            self.root_variation = Some(Ok(LegalVariation::new(Chess::new(), TurnsCapacity::default())));
-        }
-    }
-
-    fn begin_variation(&mut self) -> Skip {
-        self.movetext_string.push('(');
-        
-        let Some(Ok(root_variation)) = &self.root_variation else {
-            return Skip(true);
-        };
-
-        self.current_turn_index = self.current_turn_index.saturating_sub(1);
-
-        let current_variation = self.variation_tree.last().map_or(root_variation, |(_, last_variation)| last_variation);
-        let new_variation = LegalVariation::new(current_variation.position_before_last_move().clone(), TurnsCapacity(50));
-
-        self.variation_tree.push((self.current_turn_index, new_variation));
-
-        Skip(false)
-    }
-
-    fn end_variation(&mut self) {
-        self.movetext_string.push(')');
-        
-        let Some(Ok(root_variation)) = &mut self.root_variation else {
-            return;
-        };
-
-        // Remove the current variation because it ended, but get the value of it to push to the parent.
-        let Some((ending_variation_move_number, ending_variation)) = self.variation_tree.pop() else {
-            return;
-        };
-
-        // CLIPPY: There's never going to be u16::MAX moves.
-        #[allow(clippy::arithmetic_side_effects)]
-        {
-            self.current_turn_index = ending_variation_move_number + 1;
-        }
-
-        let ending_variation_parent = if let Some((_, last_variation)) = self.variation_tree.last_mut() {
-            last_variation
-        } else {
-            root_variation
-        };
-        
-        // print!("Finishing var: ");
-        // 
-        // for turn_i in 0..current_variation.turns().len() {
-        //     #[allow(clippy::unwrap_used)]
-        //     let r#move = current_variation.turns().get(turn_i).unwrap().r#move();
-        //     #[allow(clippy::unwrap_used)]
-        //     let position = current_variation.get_position(turn_i).unwrap();
-        //     
-        //     print!("{}, ", San::from_move(&*position, r#move));
-        // }
-        // 
-        // println!();
-        
-        // CLIPPY: All error cases are covered. `len - 1` will always be a valid index and the position is correct as assured in `begin_variation`.
-        #[allow(clippy::unwrap_used)]
-        ending_variation_parent.insert_variation(ending_variation_parent.turns().len().saturating_sub(1), ending_variation).unwrap();
-    }
-
+    
     fn san(&mut self, san_plus: SanPlus) {
-        self.movetext_string.push_str(&san_plus.to_string());
-        
-        let Some(Ok(root_variation)) = &mut self.root_variation else {
-            return;
-        };
-
-        let current_variation = self.variation_tree.last_mut().map(|pair| &mut pair.1).unwrap_or(root_variation);
-
-        //println!("Current variation position: \n{:?}", current_variation.last_position().board());
-
-        if let Err(error) = current_variation.play_san(&san_plus.san, VariationsCapacity::default()) {
-            //println!("Move {} is err", san_plus.san);
-            self.root_variation = Some(Err(RootVariationError::SanPlayError(VariationSanPlayError {
-                turn_index: self.current_turn_index,
-                //position: current_variation.last_position().into_owned(),
-                san: san_plus.san,
-                error: error.error,
-            })));
-        } else {
-            // CLIPPY: There's never going to be usize::MAX moves.
-            #[allow(clippy::arithmetic_side_effects)]
-            {
-                self.current_turn_index += 1;
-            }
-            //println!("Move {} is ok", san_plus.san)
-        }
+        self.san_list.0.push(san_plus);
     }
 
     fn end_game(&mut self) -> Self::Result {}
