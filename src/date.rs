@@ -28,15 +28,13 @@ impl Date {
         }
 
         if let Some(month) = month {
-            // SAFETY: 12 is not 0
-            if month > unsafe { NonZeroU8::new_unchecked(12) } {
+            if month.get() > 12 {
                 return Err(DateValueError::MonthGreaterThan12);
             }
         }
 
         if let Some(day) = day {
-            // SAFETY: 31 is not 0
-            if day > unsafe { NonZeroU8::new_unchecked(31) } {
+            if day.get() > 31 {
                 return Err(DateValueError::DayGreaterThan31);
             }
         }
