@@ -73,7 +73,9 @@ impl Movetext for SimpleMovetext {
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 /// Use if you do care about variations.
-/// Each item in the vec is a move and then the variations occurring on that move.
+/// Each item in the vec is a tuple consisting of:
+/// - The move.
+/// - The variations occurring on that move.
 ///
 /// *Note: this struct does not implement [`Movetext`]. Use [`VariationMovetextImpl`] for that.*
 pub struct VariationMovetext(pub Vec<(SanPlus, Vec<Self>)>);
