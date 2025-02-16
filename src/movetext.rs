@@ -161,7 +161,7 @@ impl VariationMovetext {
                 f.write_str(" )")?;
             }
 
-            // CLIPPY: There's never going to be u16::MAX moves.
+            // CLIPPY: There's never going to be usize::MAX moves.
             #[allow(clippy::arithmetic_side_effects)]
             {
                 move_number.0 += 1;
