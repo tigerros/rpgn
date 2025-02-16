@@ -19,9 +19,9 @@ pub enum DateValueError {
 impl Date {
     /// # Errors
     ///
-    /// - `year` is some and greater than 9999.
-    /// - `month` is some and greater than 12.
-    /// - `day` is some and greater than 31.
+    /// - `year` is greater than 9999.
+    /// - `month` is greater than 12.
+    /// - `day` is greater than 31.
     pub fn new(year: Option<u16>, month: Option<NonZeroU8>, day: Option<NonZeroU8>) -> Result<Self, DateValueError> {
         if year.is_some_and(|y| y > 9999) {
             return Err(DateValueError::YearGreaterThan9999);
