@@ -64,13 +64,10 @@ impl<O> Pgn<O> {
     
     /// Reads all games in this reader.
     ///
-    /// It is guaranteed that the resulting `Vec` will have the same amount of games as the reader does.
-    /// Some of them might be errors though.
+    /// It's guaranteed that the resulting `Vec` will have the same amount of games as the reader does.
     /// 
     /// # Errors
-    /// 
-    /// These are errors for every item in the `Vec`. This function does not error itself.
-    /// See [`PgnParseError`].
+    /// See [`pgn_reader::BufferedReader::read_game`].
     pub fn from_reader<R, M>(reader: &mut BufferedReader<R>) -> Vec<Result<Self, std::io::Error>> where R: Read, M: Movetext<Output = O> {
         let mut pgns = Vec::new();
 

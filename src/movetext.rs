@@ -4,7 +4,7 @@ use std::fmt::{Display, Formatter, Write};
 use pgn_reader::Skip;
 
 /// The trait for making a movetext using the structure of the [`pgn_reader::Visitor`].
-/// The [`Pgn`] struct requires a generic parameter which implements this trait.
+/// The [`crate::Pgn`] struct requires a generic parameter which implements this trait.
 pub trait Movetext {
     type Output;
     fn begin_game() -> Self where Self: Sized;
