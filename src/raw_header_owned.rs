@@ -3,7 +3,7 @@ use std::str::Utf8Error;
 use pgn_reader::RawHeader;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-/// Has functions of the [`pgn_reader::RawHeader`], but has ownership of the bytes.
+/// Like [`pgn_reader::RawHeader`], but has ownership of the bytes.
 pub struct RawHeaderOwned(pub Vec<u8>);
 
 impl From<RawHeader<'_>> for RawHeaderOwned {
