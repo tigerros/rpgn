@@ -41,8 +41,8 @@ pub fn to_pgn(c: &mut Criterion) {
         };
         let id = format!(
             "Variation {}-{}",
-            movetext.0.first().unwrap().0.to_string().replace('-', ""),
-            movetext.0.last().unwrap().0.to_string().replace('-', "")
+            movetext.0.first().unwrap().san.to_string().replace('-', ""),
+            movetext.0.last().unwrap().san.to_string().replace('-', "")
         );
 
         group.bench_with_input(BenchmarkId::from_parameter(id), &pgn, |b, pgn| {
@@ -85,8 +85,8 @@ pub fn from_pgn(c: &mut Criterion) {
         };
         let id = format!(
             "Variation {}-{}",
-            movetext.0.first().unwrap().0.to_string().replace('-', ""),
-            movetext.0.last().unwrap().0.to_string().replace('-', "")
+            movetext.0.first().unwrap().san.to_string().replace('-', ""),
+            movetext.0.last().unwrap().san.to_string().replace('-', "")
         );
 
         group.bench_with_input(

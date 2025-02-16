@@ -6,7 +6,10 @@
 use crate::movetext::SimpleMovetext;
 #[cfg(test)]
 use crate::Movetext;
-use crate::{Date, Eco, EcoCategory, Outcome, Pgn, Round};
+use crate::{
+    movetext::{simple_movetext, variation_movetext},
+    Date, Eco, EcoCategory, Outcome, Pgn, Round, SanWithVariations,
+};
 use crate::{RawHeaderOwned, VariationMovetext};
 use pgn_reader::RawHeader;
 #[cfg(test)]
@@ -19,30 +22,6 @@ use std::fmt::Debug;
 use std::fmt::Display;
 use std::io;
 use std::num::NonZeroU8;
-
-macro_rules! san {
-    ($san:literal) => {
-        SanPlus::from_ascii($san).unwrap()
-    };
-}
-
-macro_rules! variation_movetext {
-    (_turn: $san:literal) => {
-        (san!($san), vec![])
-    };
-    (_turn: ($san:literal, [$($vars:tt),+])) => {
-        (san!($san), vec![$(variation_movetext! $vars),+])
-    };
-    {$($turn:tt),+} => {
-        VariationMovetext(vec![$(variation_movetext!(_turn: $turn)),+])
-    };
-}
-
-macro_rules! simple_movetext {
-    ($($san:literal),+) => {
-        SimpleMovetext(vec![$(san!($san)),+])
-    };
-}
 
 #[derive(Debug)]
 pub struct PgnSample<O> {

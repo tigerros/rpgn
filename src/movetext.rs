@@ -18,6 +18,17 @@ pub trait Movetext {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SimpleMovetext(pub Vec<SanPlus>);
 
+/// Create a [`SimpleMovetext`] out of a list SAN literals.
+/// 
+/// # Panics
+/// See [`SanPlus::from_ascii`].
+#[macro_export]
+macro_rules! simple_movetext {
+    ($($san:literal),+) => {
+        SimpleMovetext(vec![$(SanPlus::from_ascii($san).unwrap()),+])
+    };
+}
+
 impl Display for SimpleMovetext {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let mut move_number = MoveNumber(0);
@@ -72,20 +83,43 @@ impl Movetext for SimpleMovetext {
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
+pub struct SanWithVariations {
+    pub san: SanPlus,
+    pub variations: Vec<VariationMovetext>,
+}
+
+#[derive(Debug, PartialEq, Eq, Clone)]
 /// Use if you do care about variations.
-/// Each item in the vec is a tuple consisting of:
-/// - The move.
-/// - The variations occurring on that move.
 ///
 /// *Note: this struct does not implement [`Movetext`]. Use [`VariationMovetextImpl`] for that.*
-pub struct VariationMovetext(pub Vec<(SanPlus, Vec<Self>)>);
+pub struct VariationMovetext(pub Vec<SanWithVariations>);
+
+/// Create a [`VariationMovetext`] out of SAN literals.
+/// 
+/// # Syntax
+/// See the `samples.rs` file in the repository.
+/// 
+/// # Panics
+/// See [`SanPlus::from_ascii`].
+#[macro_export]
+macro_rules! variation_movetext {
+    (_turn: $san:literal) => {
+        SanWithVariations { san: SanPlus::from_ascii($san).unwrap(), variations: vec![] }
+    };
+    (_turn: ($san:literal, [$($vars:tt),+])) => {
+        SanWithVariations { san: SanPlus::from_ascii($san).unwrap(), variations: vec![$(variation_movetext! $vars),+] }
+    };
+    {$($turn:tt),+} => {
+        VariationMovetext(vec![$(variation_movetext!(_turn: $turn)),+])
+    };
+}
 
 impl From<SimpleMovetext> for VariationMovetext {
     fn from(simple_movetext: SimpleMovetext) -> Self {
         let mut variation_movetext = Self(Vec::with_capacity(simple_movetext.0.len()));
 
         for san in simple_movetext.0 {
-            variation_movetext.0.push((san, Vec::new()));
+            variation_movetext.0.push(SanWithVariations { san, variations: Vec::new() });
         }
 
         variation_movetext
@@ -123,13 +157,13 @@ impl Movetext for VariationMovetextImpl {
         let ending_variation_parent = self.variation_layers.last_mut().unwrap_or(&mut self.root_variation);
 
         #[allow(clippy::unwrap_used)]
-        ending_variation_parent.0.last_mut().unwrap().1.push(ending_variation);
+        ending_variation_parent.0.last_mut().unwrap().variations.push(ending_variation);
     }
 
     fn san(&mut self, san: SanPlus) {
         let current_variation = self.variation_layers.last_mut().unwrap_or(&mut self.root_variation);
 
-        current_variation.0.push((san, Vec::new()));
+        current_variation.0.push(SanWithVariations { san, variations: Vec::new() });
     }
 
     fn end_game(self) -> Self::Output {
@@ -139,7 +173,7 @@ impl Movetext for VariationMovetextImpl {
 
 impl VariationMovetext {
     fn fmt(&self, f: &mut Formatter<'_>, mut move_number: MoveNumber, mut very_first_move: bool) -> std::fmt::Result {
-        for (san, variations) in &self.0 {
+        for SanWithVariations { san, variations } in &self.0 {
             if very_first_move {
                 very_first_move = false;
             } else {
@@ -179,3 +213,6 @@ impl Display for VariationMovetext {
         self.fmt(f, MoveNumber::MIN, true)
     }
 }
+
+pub(crate) use simple_movetext;
+pub(crate) use variation_movetext;
