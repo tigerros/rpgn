@@ -1,20 +1,17 @@
-use std::cell::RefCell;
 use crate::MoveNumber;
 use shakmaty::san::SanPlus;
 use std::fmt::{Display, Formatter, Write};
-use std::rc::{Rc, Weak};
 use pgn_reader::Skip;
 
 /// The trait for making a movetext using the structure of the [`pgn_reader::Visitor`].
 /// The [`Pgn`] struct requires a generic parameter which implements this trait.
 pub trait Movetext {
-    type Output: Display;
+    type Output;
     fn begin_game() -> Self where Self: Sized;
     fn begin_variation(&mut self) -> Skip;
     fn end_variation(&mut self) {}
     fn san(&mut self, san: SanPlus);
-    fn end_game(&mut self) {}
-    fn output(self) -> Self::Output;
+    fn end_game(self) -> Self::Output;
 }
 
 /// Use if you don't care about variations.
@@ -43,7 +40,11 @@ impl Display for SimpleMovetext {
 
             san.fmt(f)?;
 
-            move_number.0 += 1;
+            // CLIPPY: There will never be u16::MAX moves.
+            #[allow(clippy::arithmetic_side_effects)]
+            {
+                move_number.0 += 1;
+            }
         }
 
         Ok(())
@@ -54,7 +55,7 @@ impl Movetext for SimpleMovetext {
     type Output = Self;
     
     fn begin_game() -> Self {
-        SimpleMovetext(Vec::with_capacity(100))
+        Self(Vec::with_capacity(100))
     }
 
     fn begin_variation(&mut self) -> pgn_reader::Skip {
@@ -65,20 +66,32 @@ impl Movetext for SimpleMovetext {
         self.0.push(san);
     }
 
-    fn output(self) -> Self::Output {
+    fn end_game(self) -> Self::Output {
         self
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 /// Use if you do care about variations.
 /// Each item in the vec is a move and then the variations occurring on that move.
 ///
 /// *Note: this struct does not implement [`Movetext`]. Use [`VariationMovetextImpl`] for that.*
 pub struct VariationMovetext(pub Vec<(SanPlus, Vec<Self>)>);
 
-/// See [`VariationMovetext`].
+impl From<SimpleMovetext> for VariationMovetext {
+    fn from(simple_movetext: SimpleMovetext) -> Self {
+        let mut variation_movetext = Self(Vec::with_capacity(simple_movetext.0.len()));
+
+        for san in simple_movetext.0 {
+            variation_movetext.0.push((san, Vec::new()));
+        }
+
+        variation_movetext
+    }
+}
+
 #[derive(Debug)]
+/// See [`VariationMovetext`].
 pub struct VariationMovetextImpl {
     root_variation: VariationMovetext,
     variation_layers: Vec<VariationMovetext>
@@ -117,7 +130,7 @@ impl Movetext for VariationMovetextImpl {
         current_variation.0.push((san, Vec::new()));
     }
 
-    fn output(self) -> Self::Output {
+    fn end_game(self) -> Self::Output {
         self.root_variation
     }
 }

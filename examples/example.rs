@@ -1,4 +1,4 @@
-use rpgn::Pgn;
+use rpgn::{Pgn, SimpleMovetext, VariationMovetextImpl};
 
 const PGN: &str = r#"[Event "Live Chess"]
 [Site "Chess.com"]
@@ -34,7 +34,9 @@ Bg4 9. Qa1 d4 10. h3 dxe3 11. fxe3 Bf5 12. Nf3 Nb4 13. O-O Nxc2 14. Nxc2 Bxc2
 Bxg7 Qd7 22. Bh6 Ne4 23. Bg4 Qe7 (23... Qe7 24. Be6+) 1-0"#;
 
 fn main() {
-    let pgn = Pgn::from_str(PGN);
+    let simple_pgn = Pgn::from_str::<SimpleMovetext>(PGN);
+    let variation_pgn = Pgn::from_str::<VariationMovetextImpl>(PGN);
 
-    println!("Parsed PGN: {pgn:#?}");
+    println!("Simple parsed PGN: {simple_pgn:#?}");
+    println!("Parsed PGN with variations: {variation_pgn:#?}");
 }

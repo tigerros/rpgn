@@ -41,6 +41,7 @@ dry_mods::mods! {
     round;
 }
 
-#[cfg(test)]
+/// These are samples I use in tests and benchmarks.
+/// They're public because benchmarks get the same crate you get.
 pub mod samples;
 mod visitor;

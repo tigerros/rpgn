@@ -18,6 +18,8 @@ impl RawHeaderOwned {
         RawHeader(&self.0).decode()
     }
 
+    // CLIPPY: The linked docs cover it.
+    #[allow(clippy::missing_errors_doc)]
     /// See [`pgn_reader::RawHeader::decode_utf8`].
     pub fn decode_utf8(&self) -> Result<Cow<str>, Utf8Error> {
         RawHeader(&self.0).decode_utf8()

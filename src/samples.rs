@@ -1,17 +1,22 @@
-//! These are samples I use in tests and benchmarks.
-
 // CLIPPY: These samples are only used in tests and benches, any panics will be caught.
 #![allow(clippy::unwrap_used)]
 #![allow(clippy::unreachable)]
 #![allow(clippy::missing_panics_doc)]
 
 use crate::movetext::SimpleMovetext;
+#[cfg(test)]
+use crate::Movetext;
 use crate::{Date, Eco, EcoCategory, Outcome, Pgn, Round};
-use crate::{Movetext, RawHeaderOwned, VariationMovetext};
+use crate::{RawHeaderOwned, VariationMovetext};
 use pgn_reader::RawHeader;
+#[cfg(test)]
+use pretty_assertions::assert_eq;
+use shakmaty::fen::Fen;
 use shakmaty::san::SanPlus;
-use shakmaty::{Color, Move};
-use std::fmt::{Debug, Display};
+use shakmaty::Color;
+use std::fmt::Debug;
+#[cfg(test)]
+use std::fmt::Display;
 use std::io;
 use std::num::NonZeroU8;
 
@@ -40,24 +45,49 @@ macro_rules! simple_movetext {
 }
 
 #[derive(Debug)]
-pub struct PgnSample<M>
-where
-    M: Movetext<Output: Debug>,
-{
+pub struct PgnSample<O> {
     pub string: &'static str,
-    pub parsed: Result<Pgn<M>, io::Error>,
+    pub parsed: Result<Pgn<O>, io::Error>,
 }
 
-impl<M> PgnSample<M>
-where
-    M: Movetext<Output: Debug>,
-{
-    pub const fn new(string: &'static str, parsed: Result<Pgn<M>, io::Error>) -> Self {
+impl<O> PgnSample<O> {
+    pub const fn new(string: &'static str, parsed: Result<Pgn<O>, io::Error>) -> Self {
         Self { string, parsed }
     }
 }
 
-pub fn sample0() -> PgnSample<VariationMovetext> {
+#[cfg(test)]
+impl<O> PgnSample<O>
+where
+    O: PartialEq + Debug + Display,
+{
+    pub fn test<M>(&self)
+    where
+        M: Movetext<Output = O>,
+    {
+        let from_str_vec = Pgn::from_str::<M>(self.string);
+        let from_str = from_str_vec.first().unwrap();
+
+        match &self.parsed {
+            Ok(parsed_pgn) => {
+                assert_eq!(from_str.as_ref().unwrap(), parsed_pgn);
+                assert_eq!(parsed_pgn.to_string(), self.string);
+            }
+            Err(e1) => {
+                assert!(from_str.is_err());
+
+                let Err(e2) = from_str else {
+                    unreachable!();
+                };
+
+                // Put `e1` on the right side of the assert because that is the "correct" side.
+                assert_eq!(e2.to_string(), e1.to_string());
+            }
+        }
+    }
+}
+
+pub fn variation0() -> PgnSample<VariationMovetext> {
     const PGN: &str = r#"[Event "Let's Play!"]
 [Site "Chess.com"]
 [Date "2024.02.14"]
@@ -109,7 +139,7 @@ pub fn sample0() -> PgnSample<VariationMovetext> {
     )
 }
 
-pub fn simple_sample1() -> PgnSample<SimpleMovetext> {
+pub fn variation1() -> PgnSample<VariationMovetext> {
     const PGN: &str = r#"[Event "Live Chess"]
 [Site "Lichess"]
 [Date "2024.02.??"]
@@ -124,7 +154,7 @@ pub fn simple_sample1() -> PgnSample<SimpleMovetext> {
 
 1. g4 1... e5 2. f3 2... Qh4#"#;
 
-    let movetext = simple_movetext!(b"g4", b"e5", b"f3", b"Qh4");
+    let movetext = variation_movetext! { b"g4", b"e5", b"f3", b"Qh4#" };
 
     PgnSample::new(
         PGN,
@@ -153,15 +183,23 @@ pub fn simple_sample1() -> PgnSample<SimpleMovetext> {
     )
 }
 
-pub fn simple_sample2() -> PgnSample<SimpleMovetext> {
+pub fn variation2() -> PgnSample<VariationMovetext> {
     const PGN: &str = r#"[Date "????.01.??"]
 [Round "1"]
 [Result "1/2-1/2"]
 [ECO "C50"]
 
-1. e4 ( 1. d4 1... d5 ( 1... f5 2. g3 ( 2. c4 2... Nf6 3. Nc3 3... e6 ( 3... g6 ) 4. Nf3 ) 2... Nf6 ) ) 1... e5 2. Nf3 2... Nc6 3. Bc4 3... Nf6 ( 3... Bc5 ) 4. d3"#;
+1. e4 ( 1. d4 1... d5 ( 1... f5 2. g3 ( 2. c4 2... Nf6 3. Nc3 3... e6 ( 3... g6 ) 4. Nf3 ) 2... Nf6 ) ) 1... e5 2. Nf3 2... Nc6 3. Bc4 3... Nf6 ( 3... Bc5 ) ( 3... Nge7 ) 4. d3 ( 4. O-O )"#;
 
-    let movetext = simple_movetext!(b"e4", b"e5", b"Nf3", b"Nc6", b"Bc4", b"Nf6", b"d3");
+    let movetext = variation_movetext! {
+        (b"e4", [{ b"d4", (b"d5", [{ b"f5", (b"g3", [{ b"c4", b"Nf6", b"Nc3", (b"e6", [{ b"g6" }]), b"Nf3" }]), b"Nf6" }]) }]),
+        b"e5",
+        b"Nf3",
+        b"Nc6",
+        b"Bc4",
+        (b"Nf6", [{ b"Bc5" }, { b"Nge7" }]),
+        (b"d3", [{ b"O-O" }])
+    };
 
     PgnSample::new(
         PGN,
@@ -188,33 +226,29 @@ pub fn simple_sample2() -> PgnSample<SimpleMovetext> {
     )
 }
 
-/// Erroneous (3. Nd2 is ambiguous). We don't care though.
-pub fn simple_sample5() -> PgnSample<SimpleMovetext> {
-    const PGN: &str = "1. Nf3 1... a6 2. d3 2... a5 3. Nd2";
+/// Nd2 is ambiguous, but we don't care.
+pub fn simple0() -> PgnSample<SimpleMovetext> {
+    const PGN: &str = r#"[FEN "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"]
+
+1. Nf3 1... a6 2. d3 2... a5 3. Nd2"#;
 
     let movetext = simple_movetext!(b"Nf3", b"a6", b"d3", b"a5", b"Nd2");
 
     PgnSample::new(
         PGN,
         Ok(Pgn {
-            event: None,
-            site: None,
-            date: None,
-            round: None,
-            white: None,
-            white_elo: None,
-            black: None,
-            black_elo: None,
-            outcome: None,
-            eco: None,
-            time_control: None,
-            fen: None,
+            fen: Some(Ok(Fen::from_ascii(
+                b"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
+            )
+            .unwrap())),
             movetext: Some(movetext),
+            ..Default::default()
         }),
     )
 }
 
-pub fn pgn_sample6() -> PgnSample<SimpleMovetext> {
+/// One move.
+pub fn simple1() -> PgnSample<SimpleMovetext> {
     const PGN: &str = "1. e4";
 
     let movetext = simple_movetext!(b"e4");
@@ -222,19 +256,8 @@ pub fn pgn_sample6() -> PgnSample<SimpleMovetext> {
     PgnSample::new(
         PGN,
         Ok(Pgn {
-            event: None,
-            site: None,
-            date: None,
-            round: None,
-            white: None,
-            white_elo: None,
-            black: None,
-            black_elo: None,
-            outcome: None,
-            eco: None,
-            time_control: None,
-            fen: None,
             movetext: Some(movetext),
+            ..Default::default()
         }),
     )
 }
