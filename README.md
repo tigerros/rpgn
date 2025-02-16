@@ -7,13 +7,10 @@
 # RPGN
 
 *Note: this is not a complete implementation of the PGN standard.*
-*Note: I've yanked the crate for now, because there's some significant issues.*
 
 <ins>R</ins>ust <ins>P</ins>ortable <ins>G</ins>ame <ins>N</ins>otation.
 
 A crate for parsing a PGN, built on [`shakmaty`](https://crates.io/crates/shakmaty) and [`pgn-reader`](https://crates.io/crates/pgn-reader).
 
 `pgn-reader` only allows you to read individual, untyped parts of the PGN, but doesn't actually parse it into something useful.
-This crate parses a PGN into the [`Pgn`](https://docs.rs/rpgn/latest/rpgn/pgn/struct.Pgn.html) struct.
-
-You may also be interested in using the [`Variation`](https://docs.rs/rpgn/latest/rpgn/struct.Variation.html) struct if you need to process chess variations. It's included to process PGN movelists, but can be used standalone.
+This crate parses a PGN into the [`Pgn`](https://docs.rs/rpgn/latest/rpgn/struct.Pgn.html) struct. Again, not complete.

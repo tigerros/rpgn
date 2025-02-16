@@ -29,16 +29,19 @@
     clippy::print_stderr
 )]
 
-mod concat_strings;
-
-pub(crate) use concat_strings::concat_strings;
 dry_mods::mods! {
-    mod pub use move_number,
-    variation,
+    mod pub use date,
     eco,
     eco_category,
-    time_control_field;
-    pub mod pgn;
+    move_number,
+    movetext,
+    outcome,
+    pgn,
+    raw_header_owned,
+    round;
 }
+
+/// These are samples I use in tests and benchmarks.
+/// They're public because benchmarks get the same crate you get.
 pub mod samples;
-pub use pgn::{Pgn, PgnParseError};
+mod visitor;

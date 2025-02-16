@@ -19,24 +19,22 @@ pub enum DateValueError {
 impl Date {
     /// # Errors
     ///
-    /// - `year` is some and greater than 9999.
-    /// - `month` is some and greater than 12.
-    /// - `day` is some and greater than 31.
+    /// - `year` is greater than 9999.
+    /// - `month` is greater than 12.
+    /// - `day` is greater than 31.
     pub fn new(year: Option<u16>, month: Option<NonZeroU8>, day: Option<NonZeroU8>) -> Result<Self, DateValueError> {
         if year.is_some_and(|y| y > 9999) {
             return Err(DateValueError::YearGreaterThan9999);
         }
 
         if let Some(month) = month {
-            // SAFETY: 12 is not 0
-            if month > unsafe { NonZeroU8::new_unchecked(12) } {
+            if month.get() > 12 {
                 return Err(DateValueError::MonthGreaterThan12);
             }
         }
 
         if let Some(day) = day {
-            // SAFETY: 31 is not 0
-            if day > unsafe { NonZeroU8::new_unchecked(31) } {
+            if day.get() > 31 {
                 return Err(DateValueError::DayGreaterThan31);
             }
         }
