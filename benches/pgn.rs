@@ -1,17 +1,20 @@
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
-use rpgn::samples::pgn_samples;
+use rpgn::samples::simple_samples;
 use rpgn::Pgn;
 
 pub fn to_pgn(c: &mut Criterion) {
     let mut group = c.benchmark_group("to_pgn");
 
-    for pgn in pgn_samples().iter().filter_map(|s| s.parsed.as_ref().ok()) {
-        let turns = pgn.san_list.as_ref().unwrap().turns();
+    for pgn in simple_samples()
+        .iter()
+        .filter_map(|s| s.parsed.as_ref().ok())
+    {
+        let sans = &pgn.movetext.0;
         let mut id = String::with_capacity(5 * 2 + 1);
 
-        id.push_str(&turns.first().unwrap().r#move().to_string().replace('-', ""));
+        id.push_str(&sans.first().unwrap().to_string().replace('-', ""));
         id.push('-');
-        id.push_str(&turns.last().unwrap().r#move().to_string().replace('-', ""));
+        id.push_str(&sans.last().unwrap().to_string().replace('-', ""));
 
         group.bench_with_input(BenchmarkId::from_parameter(id), &pgn, |b, pgn| {
             b.iter(|| pgn.to_string())
@@ -24,16 +27,16 @@ pub fn to_pgn(c: &mut Criterion) {
 pub fn from_pgn(c: &mut Criterion) {
     let mut group = c.benchmark_group("from_pgn");
 
-    for (pgn_string, pgn) in pgn_samples()
+    for (pgn_string, pgn) in simple_samples()
         .iter()
         .filter_map(|s| s.parsed.as_ref().ok().map(|p| (s.string, p)))
     {
-        let turns = pgn.san_list.as_ref().unwrap().turns();
+        let sans = &pgn.movetext.0;
         let mut id = String::with_capacity(5 * 2 + 1);
 
-        id.push_str(&turns.first().unwrap().r#move().to_string().replace('-', ""));
+        id.push_str(&sans.first().unwrap().to_string().replace('-', ""));
         id.push('-');
-        id.push_str(&turns.last().unwrap().r#move().to_string().replace('-', ""));
+        id.push_str(&sans.last().unwrap().to_string().replace('-', ""));
 
         group.bench_with_input(
             BenchmarkId::from_parameter(id),
