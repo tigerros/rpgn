@@ -1,5 +1,4 @@
-use crate::movetext::Movetext;
-use crate::{Date, Eco, Outcome, Pgn, Round};
+use crate::{Date, Eco, Movetext, Outcome, Pgn, Round};
 use pgn_reader::{RawHeader, Skip};
 use shakmaty::fen::Fen;
 use shakmaty::san::SanPlus;
@@ -11,25 +10,25 @@ pub struct Visitor<'pgn, M>
 where
     M: Movetext,
 {
-    pgn: &'pgn mut Pgn<M::Output>,
-    movetext_impl: Option<M>,
+    pgn: &'pgn mut Pgn<M>,
+    movetext_agent: Option<M::Agent>,
 }
 
 impl<'pgn, M> Visitor<'pgn, M>
 where
     M: Movetext,
 {
-    pub fn new(pgn: &'pgn mut Pgn<M::Output>) -> Self {
+    pub fn new(pgn: &'pgn mut Pgn<M>) -> Self {
         Visitor {
             pgn,
-            movetext_impl: None,
+            movetext_agent: None,
         }
     }
 
     /// This sets the `Pgn.movetext` field.
     /// Call this after using the visitor.
     pub fn end_game(self) {
-        self.pgn.movetext = self.movetext_impl.map(Movetext::end_game);
+        self.pgn.movetext = self.movetext_agent.map(Movetext::end_game);
     }
 }
 
@@ -60,24 +59,24 @@ where
     }
 
     fn begin_game(&mut self) {
-        self.movetext_impl = Some(M::begin_game());
+        self.movetext_agent = Some(M::begin_game());
     }
 
     fn begin_variation(&mut self) -> Skip {
-        self.movetext_impl
+        self.movetext_agent
             .as_mut()
-            .map_or(Skip(true), Movetext::begin_variation)
+            .map_or(Skip(true), M::begin_variation)
     }
 
     fn end_variation(&mut self) {
-        if let Some(movetext_impl) = &mut self.movetext_impl {
-            movetext_impl.end_variation();
+        if let Some(movetext_agent) = &mut self.movetext_agent {
+            M::end_variation(movetext_agent);
         }
     }
 
-    fn san(&mut self, san_plus: SanPlus) {
-        if let Some(movetext_impl) = &mut self.movetext_impl {
-            movetext_impl.san(san_plus);
+    fn san(&mut self, san: SanPlus) {
+        if let Some(movetext_agent) = &mut self.movetext_agent {
+            M::san(movetext_agent, san);
         }
     }
 

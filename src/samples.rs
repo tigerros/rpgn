@@ -3,19 +3,16 @@
 #![allow(clippy::unreachable)]
 #![allow(clippy::missing_panics_doc)]
 
-use crate::movetext::SanVec;
+use crate::movetext::{Sans, Variation};
 #[cfg(test)]
 use crate::Movetext;
-use crate::{
-    movetext::{san_vec, variation},
-    Date, Eco, EcoCategory, Outcome, Pgn, Round, SanWithVariations,
-};
-use crate::{RawHeaderOwned, Variation};
+use crate::RawHeaderOwned;
+use crate::{sans, variation};
+use crate::{Date, Eco, EcoCategory, Outcome, Pgn, Round};
 use pgn_reader::RawHeader;
 #[cfg(test)]
 use pretty_assertions::assert_eq;
 use shakmaty::fen::Fen;
-use shakmaty::san::SanPlus;
 use shakmaty::Color;
 use std::fmt::Debug;
 #[cfg(test)]
@@ -24,27 +21,24 @@ use std::io;
 use std::num::NonZeroU8;
 
 #[derive(Debug)]
-pub struct PgnSample<O> {
+pub struct PgnSample<M> {
     pub string: &'static str,
-    pub parsed: Result<Pgn<O>, io::Error>,
+    pub parsed: Result<Pgn<M>, io::Error>,
 }
 
-impl<O> PgnSample<O> {
-    pub const fn new(string: &'static str, parsed: Result<Pgn<O>, io::Error>) -> Self {
+impl<M> PgnSample<M> {
+    pub const fn new(string: &'static str, parsed: Result<Pgn<M>, io::Error>) -> Self {
         Self { string, parsed }
     }
 }
 
 #[cfg(test)]
-impl<O> PgnSample<O>
+impl<M> PgnSample<M>
 where
-    O: PartialEq + Debug + Display,
+    M: Movetext + PartialEq + Debug + Display,
 {
-    pub fn test<M>(&self)
-    where
-        M: Movetext<Output = O>,
-    {
-        let from_str_vec = Pgn::from_str::<M>(self.string);
+    pub fn test(&self) {
+        let from_str_vec = Pgn::from_str(self.string);
         let from_str = from_str_vec.first().unwrap();
 
         match &self.parsed {
@@ -206,12 +200,12 @@ pub fn variation2() -> PgnSample<Variation> {
 }
 
 /// Nd2 is ambiguous, but we don't care.
-pub fn san_vec0() -> PgnSample<SanVec> {
+pub fn sans0() -> PgnSample<Sans> {
     const PGN: &str = r#"[FEN "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"]
 
 1. Nf3 1... a6 2. d3 2... a5 3. Nd2"#;
 
-    let movetext = san_vec!(b"Nf3", b"a6", b"d3", b"a5", b"Nd2");
+    let movetext = sans!(b"Nf3", b"a6", b"d3", b"a5", b"Nd2");
 
     PgnSample::new(
         PGN,
@@ -227,10 +221,10 @@ pub fn san_vec0() -> PgnSample<SanVec> {
 }
 
 /// One move.
-pub fn san_vec1() -> PgnSample<SanVec> {
+pub fn sans1() -> PgnSample<Sans> {
     const PGN: &str = "1. e4";
 
-    let movetext = san_vec!(b"e4");
+    let movetext = sans!(b"e4");
 
     PgnSample::new(
         PGN,

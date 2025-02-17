@@ -1,10 +1,10 @@
 use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
-use rpgn::samples::{san_vec0, san_vec1, variation0, variation1, variation2, PgnSample};
+use rpgn::samples::{sans0, sans1, variation0, variation1, variation2, PgnSample};
 use rpgn::Pgn;
-use rpgn::{SanVec, Variation, VariationMovetext};
+use rpgn::{Sans, Variation};
 
-fn san_vec_samples() -> [PgnSample<SanVec>; 2] {
-    [san_vec0(), san_vec1()]
+fn sans_samples() -> [PgnSample<Sans>; 2] {
+    [sans0(), sans1()]
 }
 
 fn variation_samples() -> [PgnSample<Variation>; 3] {
@@ -14,10 +14,7 @@ fn variation_samples() -> [PgnSample<Variation>; 3] {
 pub fn to_pgn(c: &mut Criterion) {
     let mut group = c.benchmark_group("to_pgn");
 
-    for pgn in san_vec_samples()
-        .iter()
-        .filter_map(|s| s.parsed.as_ref().ok())
-    {
+    for pgn in sans_samples().iter().filter_map(|s| s.parsed.as_ref().ok()) {
         let Some(movetext) = &pgn.movetext else {
             continue;
         };
@@ -56,7 +53,7 @@ pub fn to_pgn(c: &mut Criterion) {
 pub fn from_pgn(c: &mut Criterion) {
     let mut group = c.benchmark_group("from_pgn");
 
-    for (pgn_string, pgn) in san_vec_samples()
+    for (pgn_string, pgn) in sans_samples()
         .iter()
         .filter_map(|s| s.parsed.as_ref().ok().map(|p| (s.string, p)))
     {
@@ -72,7 +69,7 @@ pub fn from_pgn(c: &mut Criterion) {
         group.bench_with_input(
             BenchmarkId::from_parameter(id),
             &pgn_string,
-            |b, pgn_string| b.iter(|| Pgn::from_str::<SanVec>(pgn_string)),
+            |b, pgn_string| b.iter(|| Pgn::<Sans>::from_str(pgn_string)),
         );
     }
 
@@ -92,7 +89,7 @@ pub fn from_pgn(c: &mut Criterion) {
         group.bench_with_input(
             BenchmarkId::from_parameter(id),
             &pgn_string,
-            |b, pgn_string| b.iter(|| Pgn::from_str::<VariationMovetext>(pgn_string)),
+            |b, pgn_string| b.iter(|| Pgn::<Variation>::from_str(pgn_string)),
         );
     }
 

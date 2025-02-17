@@ -1,5 +1,5 @@
 use std::fmt::{Display, Formatter, Write};
-use std::io::{Cursor, Read};
+use std::io::Read;
 use std::str::FromStr;
 use pgn_reader::BufferedReader;
 use shakmaty::fen::{Fen, ParseFenError};
@@ -7,7 +7,7 @@ use super::visitor::{Visitor};
 use crate::{Eco, Outcome, Date, Round, RawHeaderOwned, Movetext};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Pgn<O> {
+pub struct Pgn<M> {
     /// See "Event" under "Seven Tag Roster".
     /// <https://www.saremba.de/chessgml/standards/pgn/pgn-complete.htm#AEN158>
     pub event: Option<RawHeaderOwned>,
@@ -44,10 +44,10 @@ pub struct Pgn<O> {
     pub fen: Option<Result<Fen, ParseFenError>>,
     /// The actual game. See [`Movetext`].
     /// <https://www.saremba.de/chessgml/standards/pgn/pgn-complete.htm#c8.2>
-    pub movetext: Option<O>,
+    pub movetext: Option<M>,
 }
 
-impl<O> Default for Pgn<O> {
+impl<M> Default for Pgn<M> {
     /// Creates a [`Pgn`] with all fields set to [`None`].
     fn default() -> Self {
         Self {
@@ -68,28 +68,28 @@ impl<O> Default for Pgn<O> {
     }
 }
 
-impl<O> Pgn<O> {
+impl<M> Pgn<M> where M: Movetext {
     #[allow(clippy::should_implement_trait)]
     /// Reads all games in this string.
     ///
     /// # Errors
     /// See [`pgn_reader::BufferedReader::read_game`].
-    pub fn from_str<M>(pgn: &str) -> Vec<Result<Self, std::io::Error>> where M: Movetext<Output = O> {
+    pub fn from_str(pgn: &str) -> Vec<Result<Self, std::io::Error>> {
         let mut reader = pgn_reader::BufferedReader::new_cursor(pgn);
         
-        Self::from_reader::<Cursor<&str>, M>(&mut reader)
+        Self::from_reader(&mut reader)
     }
     
     /// Reads all games in this reader.
     ///
     /// # Errors
     /// See [`pgn_reader::BufferedReader::read_game`].
-    pub fn from_reader<R, M>(reader: &mut BufferedReader<R>) -> Vec<Result<Self, std::io::Error>> where R: Read, M: Movetext<Output = O> {
+    pub fn from_reader<R>(reader: &mut BufferedReader<R>) -> Vec<Result<Self, std::io::Error>> where R: Read {
         let mut pgns = Vec::new();
 
         loop {
             let mut pgn = Self::default();
-            let mut pgn_visitor = Visitor::<M>::new(&mut pgn);
+            let mut pgn_visitor = Visitor::new(&mut pgn);
 
             let result = reader.read_game(&mut pgn_visitor);
             pgn_visitor.end_game();
@@ -106,7 +106,7 @@ impl<O> Pgn<O> {
     }
 }
 
-impl<O> Display for Pgn<O> where O: Display {
+impl<M> Display for Pgn<M> where M: Display {
     /// Returns the string representation of this PGN.
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         macro_rules! push_pgn_header {
@@ -165,19 +165,19 @@ impl<O> Display for Pgn<O> where O: Display {
 #[allow(clippy::panic)]
 mod tests {
     use test_case::test_case;
+    use crate::movetext::{Sans, Variation};
     use crate::samples::*;
-    use crate::{SanVec, Variation, VariationMovetext};
 
-    #[test_case(&san_vec0())]
-    #[test_case(&san_vec1())]
-    fn san_vec_to_pgn_from_pgn(sample: &PgnSample<SanVec>) {
-        sample.test::<SanVec>();
+    #[test_case(&sans0())]
+    #[test_case(&sans1())]
+    fn san_vec_to_pgn_from_pgn(sample: &PgnSample<Sans>) {
+        sample.test();
     }
 
     #[test_case(&variation0())]
     #[test_case(&variation1())]
     #[test_case(&variation2())]
     fn variation_to_pgn_from_pgn(sample: &PgnSample<Variation>) {
-        sample.test::<VariationMovetext>();
+        sample.test();
     }
 }

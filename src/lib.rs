@@ -35,14 +35,47 @@ dry_mods::mods! {
     eco,
     eco_category,
     move_number,
-    movetext,
     outcome,
     pgn,
     raw_header_owned,
-    round;
+    round,
+    movetext;
 }
 
 /// These are samples I use in tests and benchmarks.
 /// They're public because benchmarks get the same crate you get.
 pub mod samples;
+pub use movetext::Movetext;
+
 mod visitor;
+
+/// Create a [`Variation`](crate::movetext::Variation) out of SAN literals.
+///
+/// # Syntax
+/// See the `samples.rs` file in the repository.
+///
+/// # Panics
+/// See [`SanPlus::from_ascii`](shakmaty::san::SanPlus::from_ascii).
+#[macro_export]
+macro_rules! variation {
+    (_turn: $san:literal) => {
+        $crate::movetext::SanWithVariations { san: ::shakmaty::san::SanPlus::from_ascii($san).unwrap(), variations: vec![] }
+    };
+    (_turn: ($san:literal, [$($vars:tt),+])) => {
+        $crate::movetext::SanWithVariations { san: ::shakmaty::san::SanPlus::from_ascii($san).unwrap(), variations: vec![$($crate::variation! $vars),+] }
+    };
+    {$($turn:tt),+} => {
+        $crate::movetext::Variation(vec![$($crate::variation!(_turn: $turn)),+])
+    };
+}
+
+/// Create a [`Sans`](crate::movetext::Sans) out of a list SAN literals.
+///
+/// # Panics
+/// See [`SanPlus::from_ascii`](shakmaty::san::SanPlus::from_ascii).
+#[macro_export]
+macro_rules! sans {
+    ($($san:literal),+) => {
+        $crate::movetext::Sans(vec![$(::shakmaty::san::SanPlus::from_ascii($san).unwrap()),+])
+    };
+}
