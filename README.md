@@ -13,4 +13,4 @@
 A crate for parsing a PGN, built on [`shakmaty`](https://crates.io/crates/shakmaty) and [`pgn-reader`](https://crates.io/crates/pgn-reader).
 
 `pgn-reader` only allows you to read individual, untyped parts of the PGN, but doesn't actually parse it into something useful.
-This crate parses a PGN into the [`Pgn`](https://docs.rs/rpgn/latest/rpgn/struct.Pgn.html) struct. Again, not complete.
+This crate parses a PGN into the `Pgn` struct. See the docs for more.

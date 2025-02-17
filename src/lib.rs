@@ -28,6 +28,7 @@
     clippy::print_stdout,
     clippy::print_stderr
 )]
+#![doc = include_str!("../README.md")]
 
 dry_mods::mods! {
     mod pub use date,

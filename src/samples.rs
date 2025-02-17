@@ -3,14 +3,14 @@
 #![allow(clippy::unreachable)]
 #![allow(clippy::missing_panics_doc)]
 
-use crate::movetext::SimpleMovetext;
+use crate::movetext::SanVec;
 #[cfg(test)]
 use crate::Movetext;
 use crate::{
-    movetext::{simple_movetext, variation_movetext},
+    movetext::{san_vec, variation},
     Date, Eco, EcoCategory, Outcome, Pgn, Round, SanWithVariations,
 };
-use crate::{RawHeaderOwned, VariationMovetext};
+use crate::{RawHeaderOwned, Variation};
 use pgn_reader::RawHeader;
 #[cfg(test)]
 use pretty_assertions::assert_eq;
@@ -66,7 +66,7 @@ where
     }
 }
 
-pub fn variation0() -> PgnSample<VariationMovetext> {
+pub fn variation0() -> PgnSample<Variation> {
     const PGN: &str = r#"[Event "Let's Play!"]
 [Site "Chess.com"]
 [Date "2024.02.14"]
@@ -81,7 +81,7 @@ pub fn variation0() -> PgnSample<VariationMovetext> {
 
 1. e4 ( 1. d4 1... d5 ( 1... f5 ) ) 1... e5 2. Nf3 2... Nc6 3. Bc4 3... Nf6 ( 3... Bc5 ) 4. Nc3"#;
 
-    let movetext = variation_movetext! {
+    let movetext = variation! {
         (b"e4", [{ b"d4", (b"d5", [{ b"f5" }]) }]),
         b"e5",
         b"Nf3",
@@ -118,7 +118,7 @@ pub fn variation0() -> PgnSample<VariationMovetext> {
     )
 }
 
-pub fn variation1() -> PgnSample<VariationMovetext> {
+pub fn variation1() -> PgnSample<Variation> {
     const PGN: &str = r#"[Event "Live Chess"]
 [Site "Lichess"]
 [Date "2024.02.??"]
@@ -133,7 +133,7 @@ pub fn variation1() -> PgnSample<VariationMovetext> {
 
 1. g4 1... e5 2. f3 2... Qh4#"#;
 
-    let movetext = variation_movetext! { b"g4", b"e5", b"f3", b"Qh4#" };
+    let movetext = variation! { b"g4", b"e5", b"f3", b"Qh4#" };
 
     PgnSample::new(
         PGN,
@@ -162,7 +162,7 @@ pub fn variation1() -> PgnSample<VariationMovetext> {
     )
 }
 
-pub fn variation2() -> PgnSample<VariationMovetext> {
+pub fn variation2() -> PgnSample<Variation> {
     const PGN: &str = r#"[Date "????.01.??"]
 [Round "1"]
 [Result "1/2-1/2"]
@@ -170,7 +170,7 @@ pub fn variation2() -> PgnSample<VariationMovetext> {
 
 1. e4 ( 1. d4 1... d5 ( 1... f5 2. g3 ( 2. c4 2... Nf6 3. Nc3 3... e6 ( 3... g6 ) 4. Nf3 ) 2... Nf6 ) ) 1... e5 2. Nf3 2... Nc6 3. Bc4 3... Nf6 ( 3... Bc5 ) ( 3... Nge7 ) 4. d3 ( 4. O-O )"#;
 
-    let movetext = variation_movetext! {
+    let movetext = variation! {
         (b"e4", [{ b"d4", (b"d5", [{ b"f5", (b"g3", [{ b"c4", b"Nf6", b"Nc3", (b"e6", [{ b"g6" }]), b"Nf3" }]), b"Nf6" }]) }]),
         b"e5",
         b"Nf3",
@@ -206,12 +206,12 @@ pub fn variation2() -> PgnSample<VariationMovetext> {
 }
 
 /// Nd2 is ambiguous, but we don't care.
-pub fn simple0() -> PgnSample<SimpleMovetext> {
+pub fn san_vec0() -> PgnSample<SanVec> {
     const PGN: &str = r#"[FEN "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"]
 
 1. Nf3 1... a6 2. d3 2... a5 3. Nd2"#;
 
-    let movetext = simple_movetext!(b"Nf3", b"a6", b"d3", b"a5", b"Nd2");
+    let movetext = san_vec!(b"Nf3", b"a6", b"d3", b"a5", b"Nd2");
 
     PgnSample::new(
         PGN,
@@ -227,10 +227,10 @@ pub fn simple0() -> PgnSample<SimpleMovetext> {
 }
 
 /// One move.
-pub fn simple1() -> PgnSample<SimpleMovetext> {
+pub fn san_vec1() -> PgnSample<SanVec> {
     const PGN: &str = "1. e4";
 
-    let movetext = simple_movetext!(b"e4");
+    let movetext = san_vec!(b"e4");
 
     PgnSample::new(
         PGN,

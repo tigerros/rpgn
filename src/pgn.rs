@@ -4,26 +4,46 @@ use std::str::FromStr;
 use pgn_reader::BufferedReader;
 use shakmaty::fen::{Fen, ParseFenError};
 use super::visitor::{Visitor};
-use crate::{Eco, Outcome, Date, Round, RawHeaderOwned};
-use crate::movetext::Movetext;
+use crate::{Eco, Outcome, Date, Round, RawHeaderOwned, Movetext};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Pgn<O> {
+    /// See "Event" under "Seven Tag Roster".
+    /// <https://www.saremba.de/chessgml/standards/pgn/pgn-complete.htm#AEN158>
     pub event: Option<RawHeaderOwned>,
+    /// See "Site" under "Seven Tag Roster".
+    /// <https://www.saremba.de/chessgml/standards/pgn/pgn-complete.htm#AEN164>
     pub site: Option<RawHeaderOwned>,
+    /// See "Date" under "Seven Tag Roster".
+    /// <https://www.saremba.de/chessgml/standards/pgn/pgn-complete.htm#AEN170>
     pub date: Option<Result<Date, <Date as FromStr>::Err>>,
+    /// See "Round" under "Seven Tag Roster".
+    /// <https://www.saremba.de/chessgml/standards/pgn/pgn-complete.htm#AEN176>
     pub round: Option<Result<Round, <Round as FromStr>::Err>>,
+    /// See "White" under "Seven Tag Roster".
+    /// <https://www.saremba.de/chessgml/standards/pgn/pgn-complete.htm#AEN183>
     pub white: Option<RawHeaderOwned>,
+    /// <https://www.saremba.de/chessgml/standards/pgn/pgn-complete.htm#c9.1.2>
     pub white_elo: Option<Result<u16, <u16 as FromStr>::Err>>,
+    /// See "Black" under "Seven Tag Roster".
+    /// <https://www.saremba.de/chessgml/standards/pgn/pgn-complete.htm#AEN191>
     pub black: Option<RawHeaderOwned>,
+    /// <https://www.saremba.de/chessgml/standards/pgn/pgn-complete.htm#c9.1.2>
     pub black_elo: Option<Result<u16, <u16 as FromStr>::Err>>,
-    /// Called "Result" in the PGN standard.
+    /// See "Result" under "Seven Tag Roster".
+    /// <https://www.saremba.de/chessgml/standards/pgn/pgn-complete.htm#AEN197>
     pub outcome: Option<Result<Outcome, <Outcome as FromStr>::Err>>,
+    /// <https://www.saremba.de/chessgml/standards/pgn/pgn-complete.htm#c9.4.1>
     pub eco: Option<Result<Eco, <Eco as FromStr>::Err>>,
     // TODO: Make a time control type
+    /// Not typed yet.
+    /// <https://www.saremba.de/chessgml/standards/pgn/pgn-complete.htm#c9.6>
     pub time_control: Option<RawHeaderOwned>,
     /// Note that this FEN may not be a legal position.
+    /// <https://www.saremba.de/chessgml/standards/pgn/pgn-complete.htm#c9.7.2>
     pub fen: Option<Result<Fen, ParseFenError>>,
+    /// The actual game. See [`Movetext`].
+    /// <https://www.saremba.de/chessgml/standards/pgn/pgn-complete.htm#c8.2>
     pub movetext: Option<O>,
 }
 
@@ -146,18 +166,18 @@ impl<O> Display for Pgn<O> where O: Display {
 mod tests {
     use test_case::test_case;
     use crate::samples::*;
-    use crate::{SimpleMovetext, VariationMovetext, VariationMovetextImpl};
+    use crate::{SanVec, Variation, VariationMovetext};
 
-    #[test_case(&simple0())]
-    #[test_case(&simple1())]
-    fn simple_to_pgn_from_pgn(sample: &PgnSample<SimpleMovetext>) {
-        sample.test::<SimpleMovetext>();
+    #[test_case(&san_vec0())]
+    #[test_case(&san_vec1())]
+    fn san_vec_to_pgn_from_pgn(sample: &PgnSample<SanVec>) {
+        sample.test::<SanVec>();
     }
 
     #[test_case(&variation0())]
     #[test_case(&variation1())]
     #[test_case(&variation2())]
-    fn variation_to_pgn_from_pgn(sample: &PgnSample<VariationMovetext>) {
-        sample.test::<VariationMovetextImpl>();
+    fn variation_to_pgn_from_pgn(sample: &PgnSample<Variation>) {
+        sample.test::<VariationMovetext>();
     }
 }
