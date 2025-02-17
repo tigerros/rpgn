@@ -123,6 +123,49 @@ impl From<SanVec> for Variation {
     }
 }
 
+impl Variation {
+    fn fmt(&self, f: &mut Formatter<'_>, mut move_number: MoveNumber, mut very_first_move: bool) -> std::fmt::Result {
+        for SanWithVariations { san, variations } in &self.0 {
+            if very_first_move {
+                very_first_move = false;
+            } else {
+                f.write_char(' ')?;
+            }
+
+            move_number.number().fmt(f)?;
+
+            if move_number.color().is_white() {
+                f.write_str(". ")?;
+            } else {
+                f.write_str("... ")?;
+            }
+
+            san.fmt(f)?;
+
+            for variation in variations {
+                f.write_str(" (")?;
+
+                variation.fmt(f, move_number, false)?;
+                f.write_str(" )")?;
+            }
+
+            // CLIPPY: There's never going to be usize::MAX moves.
+            #[allow(clippy::arithmetic_side_effects)]
+            {
+                move_number.0 += 1;
+            }
+        }
+
+        Ok(())
+    }
+}
+
+impl Display for Variation {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        self.fmt(f, MoveNumber::MIN, true)
+    }
+}
+
 #[derive(Debug)]
 /// See [`Variation`].
 pub struct VariationMovetext {
@@ -165,49 +208,6 @@ impl Movetext for VariationMovetext {
 
     fn end_game(self) -> Self::Output {
         self.root_variation
-    }
-}
-
-impl Variation {
-    fn fmt(&self, f: &mut Formatter<'_>, mut move_number: MoveNumber, mut very_first_move: bool) -> std::fmt::Result {
-        for SanWithVariations { san, variations } in &self.0 {
-            if very_first_move {
-                very_first_move = false;
-            } else {
-                f.write_char(' ')?;
-            }
-
-            move_number.number().fmt(f)?;
-
-            if move_number.color().is_white() {
-                f.write_str(". ")?;
-            } else {
-                f.write_str("... ")?;
-            }
-
-            san.fmt(f)?;
-
-            for variation in variations {
-                f.write_str(" (")?;
-
-                variation.fmt(f, move_number, false)?;
-                f.write_str(" )")?;
-            }
-
-            // CLIPPY: There's never going to be usize::MAX moves.
-            #[allow(clippy::arithmetic_side_effects)]
-            {
-                move_number.0 += 1;
-            }
-        }
-
-        Ok(())
-    }
-}
-
-impl Display for Variation {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        self.fmt(f, MoveNumber::MIN, true)
     }
 }
 
