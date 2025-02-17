@@ -11,10 +11,13 @@ use pgn_reader::Skip;
 /// See [`SanVec`] and [`Variation`].
 pub trait Movetext {
     type Output;
-    fn begin_game() -> Self where Self: Sized;
+
+    fn begin_game() -> Self;
     fn begin_variation(&mut self) -> Skip;
     fn end_variation(&mut self) {}
     fn san(&mut self, san: SanPlus);
+    // fn foo(self) -> Self { self } is actually a noop on -Copt-level=3.
+    // I think it should apply to traits too, since they're just sugar.
     fn end_game(self) -> Self::Output;
 }
 
@@ -68,22 +71,11 @@ impl Display for SanVec {
 
 impl Movetext for SanVec {
     type Output = Self;
-    
-    fn begin_game() -> Self {
-        Self(Vec::with_capacity(100))
-    }
 
-    fn begin_variation(&mut self) -> pgn_reader::Skip {
-        Skip(true)
-    }
-
-    fn san(&mut self, san: SanPlus) {
-        self.0.push(san);
-    }
-
-    fn end_game(self) -> Self::Output {
-        self
-    }
+    fn begin_game() -> Self { Self(Vec::with_capacity(100)) }
+    fn begin_variation(&mut self) -> Skip { Skip(true) }
+    fn san(&mut self, san: SanPlus) { self.0.push(san); }
+    fn end_game(self) -> Self::Output { self }
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
