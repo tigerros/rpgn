@@ -112,10 +112,10 @@ macro_rules! variation {
 }
 
 impl From<SanVec> for Variation {
-    fn from(simple_movetext: SanVec) -> Self {
-        let mut variation_movetext = Self(Vec::with_capacity(simple_movetext.0.len()));
+    fn from(san_vec: SanVec) -> Self {
+        let mut variation_movetext = Self(Vec::with_capacity(san_vec.0.len()));
 
-        for san in simple_movetext.0 {
+        for san in san_vec.0 {
             variation_movetext.0.push(SanWithVariations { san, variations: Vec::new() });
         }
 
