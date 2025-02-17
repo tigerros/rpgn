@@ -36,6 +36,19 @@ macro_rules! san_vec {
     };
 }
 
+impl From<Variation> for SanVec {
+    /// Takes the root variation of the given [`Variation`] and transfers it to a [`SanVec`].
+    fn from(variation: Variation) -> Self {
+        let mut san_vec = Self(Vec::with_capacity(variation.0.len()));
+        
+        for SanWithVariations { san, .. } in variation.0 {
+            san_vec.0.push(san);
+        }
+        
+        san_vec
+    }
+}
+
 impl Display for SanVec {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let mut move_number = MoveNumber(0);
