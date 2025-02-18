@@ -1,4 +1,5 @@
 use rpgn::{Pgn, Sans, Variation};
+use shakmaty::san::{San, SanPlus};
 
 const PGN: &str = r#"[Event "Live Chess"]
 [Site "Chess.com"]
@@ -34,9 +35,9 @@ Bg4 9. Qa1 d4 10. h3 dxe3 11. fxe3 Bf5 12. Nf3 Nb4 13. O-O Nxc2 14. Nxc2 Bxc2
 Bxg7 Qd7 22. Bh6 Ne4 23. Bg4 Qe7 (23... Qe7 24. Be6+) 1-0"#;
 
 fn main() {
-    let simple_pgn = Pgn::<Sans>::from_str(PGN);
-    let variation_pgn = Pgn::<Variation>::from_str(PGN);
+    let simple_pgn = Pgn::<Sans<San>>::from_str(PGN);
+    let full_pgn = Pgn::<Variation<SanPlus>>::from_str(PGN);
 
-    println!("Simple parsed PGN: {simple_pgn:#?}");
-    println!("Parsed PGN with variations: {variation_pgn:#?}");
+    println!("Parsed PGN with simple movetext: {simple_pgn:#?}");
+    println!("Parsed PGN with variations: {full_pgn:#?}");
 }

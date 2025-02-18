@@ -2,12 +2,13 @@ use criterion::{criterion_group, criterion_main, BenchmarkId, Criterion};
 use rpgn::samples::{sans0, sans1, variation0, variation1, variation2, PgnSample};
 use rpgn::Pgn;
 use rpgn::{Sans, Variation};
+use shakmaty::san::SanPlus;
 
-fn sans_samples() -> [PgnSample<Sans>; 2] {
+fn sans_samples() -> [PgnSample<Sans<SanPlus>>; 2] {
     [sans0(), sans1()]
 }
 
-fn variation_samples() -> [PgnSample<Variation>; 3] {
+fn variation_samples() -> [PgnSample<Variation<SanPlus>>; 3] {
     [variation0(), variation1(), variation2()]
 }
 
@@ -69,7 +70,7 @@ pub fn from_pgn(c: &mut Criterion) {
         group.bench_with_input(
             BenchmarkId::from_parameter(id),
             &pgn_string,
-            |b, pgn_string| b.iter(|| Pgn::<Sans>::from_str(pgn_string)),
+            |b, pgn_string| b.iter(|| Pgn::<Sans<SanPlus>>::from_str(pgn_string)),
         );
     }
 
@@ -89,7 +90,7 @@ pub fn from_pgn(c: &mut Criterion) {
         group.bench_with_input(
             BenchmarkId::from_parameter(id),
             &pgn_string,
-            |b, pgn_string| b.iter(|| Pgn::<Variation>::from_str(pgn_string)),
+            |b, pgn_string| b.iter(|| Pgn::<Variation<SanPlus>>::from_str(pgn_string)),
         );
     }
 

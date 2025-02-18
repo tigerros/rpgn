@@ -13,6 +13,7 @@ use pgn_reader::RawHeader;
 #[cfg(test)]
 use pretty_assertions::assert_eq;
 use shakmaty::fen::Fen;
+use shakmaty::san::SanPlus;
 use shakmaty::Color;
 use std::fmt::Debug;
 #[cfg(test)]
@@ -60,7 +61,7 @@ where
     }
 }
 
-pub fn variation0() -> PgnSample<Variation> {
+pub fn variation0() -> PgnSample<Variation<SanPlus>> {
     const PGN: &str = r#"[Event "Let's Play!"]
 [Site "Chess.com"]
 [Date "2024.02.14"]
@@ -112,7 +113,7 @@ pub fn variation0() -> PgnSample<Variation> {
     )
 }
 
-pub fn variation1() -> PgnSample<Variation> {
+pub fn variation1() -> PgnSample<Variation<SanPlus>> {
     const PGN: &str = r#"[Event "Live Chess"]
 [Site "Lichess"]
 [Date "2024.02.??"]
@@ -156,7 +157,7 @@ pub fn variation1() -> PgnSample<Variation> {
     )
 }
 
-pub fn variation2() -> PgnSample<Variation> {
+pub fn variation2() -> PgnSample<Variation<SanPlus>> {
     const PGN: &str = r#"[Date "????.01.??"]
 [Round "1"]
 [Result "1/2-1/2"]
@@ -200,7 +201,7 @@ pub fn variation2() -> PgnSample<Variation> {
 }
 
 /// Nd2 is ambiguous, but we don't care.
-pub fn sans0() -> PgnSample<Sans> {
+pub fn sans0() -> PgnSample<Sans<SanPlus>> {
     const PGN: &str = r#"[FEN "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"]
 
 1. Nf3 1... a6 2. d3 2... a5 3. Nd2"#;
@@ -221,7 +222,7 @@ pub fn sans0() -> PgnSample<Sans> {
 }
 
 /// One move.
-pub fn sans1() -> PgnSample<Sans> {
+pub fn sans1() -> PgnSample<Sans<SanPlus>> {
     const PGN: &str = "1. e4";
 
     let movetext = sans!(b"e4");

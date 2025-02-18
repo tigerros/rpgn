@@ -6,6 +6,7 @@ use shakmaty::fen::{Fen, ParseFenError};
 use super::visitor::{Visitor};
 use crate::{Eco, Outcome, Date, Round, RawHeaderOwned, Movetext};
 
+/// The generic `M` should be a struct that implements [`Movetext`].
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Pgn<M> {
     /// See "Event" under "Seven Tag Roster".
@@ -164,20 +165,21 @@ impl<M> Display for Pgn<M> where M: Display {
 #[allow(clippy::unreachable)]
 #[allow(clippy::panic)]
 mod tests {
+    use shakmaty::san::SanPlus;
     use test_case::test_case;
     use crate::movetext::{Sans, Variation};
     use crate::samples::*;
 
     #[test_case(&sans0())]
     #[test_case(&sans1())]
-    fn san_vec_to_pgn_from_pgn(sample: &PgnSample<Sans>) {
+    fn san_vec_to_pgn_from_pgn(sample: &PgnSample<Sans<SanPlus>>) {
         sample.test();
     }
 
     #[test_case(&variation0())]
     #[test_case(&variation1())]
     #[test_case(&variation2())]
-    fn variation_to_pgn_from_pgn(sample: &PgnSample<Variation>) {
+    fn variation_to_pgn_from_pgn(sample: &PgnSample<Variation<SanPlus>>) {
         sample.test();
     }
 }
