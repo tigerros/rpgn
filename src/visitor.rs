@@ -4,8 +4,10 @@ use shakmaty::fen::Fen;
 use shakmaty::san::SanPlus;
 use std::str::FromStr;
 
-/// Mutates the given [`Pgn`].
-/// Remember to call [`Visitor::finalize_movetext`] **after** using the visitor.
+/// Use to read a single PGN game with [`pgn_reader::BufferedReader`].
+/// See the [`pgn_reader`] docs for more information.
+/// Remember to call [`Visitor::end_game`] **after** using the visitor.
+#[derive(Debug)]
 pub struct Visitor<'pgn, M>
 where
     M: Movetext,

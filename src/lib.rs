@@ -39,15 +39,14 @@ dry_mods::mods! {
     pgn,
     raw_header_owned,
     round,
-    movetext;
+    movetext,
+    visitor;
 }
 
 /// These are samples I use in tests and benchmarks.
 /// They're public because benchmarks get the same crate you get.
 pub mod samples;
 pub use movetext::Movetext;
-
-mod visitor;
 
 /// Create a [`Variation`](crate::movetext::Variation) out of SAN literals.
 ///
