@@ -93,10 +93,12 @@ impl<M> Pgn<M> where M: Movetext {
             let mut pgn_visitor = Visitor::new(&mut pgn);
 
             let result = reader.read_game(&mut pgn_visitor);
-            pgn_visitor.end_game();
 
             match result {
-                Ok(Some(())) => pgns.push(Ok(pgn)),
+                Ok(Some(())) => {
+                    pgn_visitor.end_game();
+                    pgns.push(Ok(pgn));
+                },
                 Err(e) => pgns.push(Err(e)),
                 // Empty reader
                 Ok(None) => break,
