@@ -9,7 +9,7 @@ dry_mods::mods! {
 ///
 /// See [`Sans`] and [`Variation`].
 /// You can also implement this yourself and use that in a [`Pgn`](crate::Pgn).
-pub trait Movetext {
+pub trait Movetext: Default {
     /// This is what is actually implementing the core functionality.
     /// The type implementing the [`Movetext`] trait is just what the [`Movetext::Agent`] outputs.
     /// That way the agent can have extra state that isn't necessary in the final output.

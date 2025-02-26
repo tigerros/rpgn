@@ -13,6 +13,12 @@ use crate::movetext::{SanWithVariations, Variation};
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Sans<S>(pub Vec<S>);
 
+impl<S> Default for Sans<S> {
+    fn default() -> Self {
+        Self(Vec::new())
+    }
+}
+
 impl<S> From<Variation<S>> for Sans<S> {
     /// Takes the root variation of the given [`Variation`] and transfers it to a [`Sans`].
     fn from(variation: Variation<S>) -> Self {

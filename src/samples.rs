@@ -108,7 +108,7 @@ pub fn variation0() -> PgnSample<Variation<SanPlus>> {
             eco: Some(Ok(Eco::new(EcoCategory::C, 50).unwrap())),
             time_control: Some(RawHeaderOwned::from(RawHeader(b"600+0"))),
             fen: None,
-            movetext: Some(movetext),
+            movetext,
         }),
     )
 }
@@ -152,7 +152,7 @@ pub fn variation1() -> PgnSample<Variation<SanPlus>> {
             eco: Some(Ok(Eco::new(EcoCategory::A, 00).unwrap())),
             time_control: Some(RawHeaderOwned::from(RawHeader(b"600+2"))),
             fen: None,
-            movetext: Some(movetext),
+            movetext,
         }),
     )
 }
@@ -195,7 +195,7 @@ pub fn variation2() -> PgnSample<Variation<SanPlus>> {
             eco: Some(Ok(Eco::new(EcoCategory::C, 50).unwrap())),
             time_control: None,
             fen: None,
-            movetext: Some(movetext),
+            movetext,
         }),
     )
 }
@@ -215,7 +215,7 @@ pub fn sans0() -> PgnSample<Sans<SanPlus>> {
                 b"rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
             )
             .unwrap())),
-            movetext: Some(movetext),
+            movetext,
             ..Default::default()
         }),
     )
@@ -230,7 +230,7 @@ pub fn sans1() -> PgnSample<Sans<SanPlus>> {
     PgnSample::new(
         PGN,
         Ok(Pgn {
-            movetext: Some(movetext),
+            movetext,
             ..Default::default()
         }),
     )

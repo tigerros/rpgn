@@ -45,11 +45,11 @@ pub struct Pgn<M> {
     pub fen: Option<Result<Fen, ParseFenError>>,
     /// The actual game. See [`Movetext`].
     /// <https://www.saremba.de/chessgml/standards/pgn/pgn-complete.htm#c8.2>
-    pub movetext: Option<M>,
+    pub movetext: M,
 }
 
-impl<M> Default for Pgn<M> {
-    /// Creates a [`Pgn`] with all fields set to [`None`].
+impl<M> Default for Pgn<M> where M: Movetext {
+    /// Creates a [`Pgn`] with all fields set to [`None`], and calls [`Default::default`] on `M`.
     fn default() -> Self {
         Self {
             event: None,
@@ -64,7 +64,7 @@ impl<M> Default for Pgn<M> {
             eco: None,
             time_control: None,
             fen: None,
-            movetext: None,
+            movetext: M::default(),
         }
     }
 }
@@ -149,15 +149,11 @@ impl<M> Display for Pgn<M> where M: Display {
         push_pgn_header!(time_control, "TimeControl");
         push_pgn_header!(custom_type: fen, "FEN");
 
-        let Some(movetext) = &self.movetext else {
-            return Ok(());
-        };
-
         if any_fields_some!(event, site, date, round, white, black, outcome, white_elo, black_elo, eco, time_control, fen) {
             f.write_char('\n')?;
         }
 
-        movetext.fmt(f)
+        self.movetext.fmt(f)
     }
 }
 

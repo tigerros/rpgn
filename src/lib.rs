@@ -31,21 +31,27 @@
 #![doc = include_str!("../README.md")]
 
 dry_mods::mods! {
-    mod pub use date,
-    eco,
+    pub mod eco, date, round;
+    mod pub use
     eco_category,
     move_number,
     outcome,
     pgn,
     raw_header_owned,
-    round,
     movetext,
     visitor;
 }
 
+pub use date::Date;
+pub use eco::Eco;
+pub use round::Round;
+
 /// These are samples I use in tests and benchmarks.
 /// They're public because benchmarks get the same crate you get.
 pub mod samples;
+pub mod seven_tag_roster;
+pub use seven_tag_roster::SevenTagRoster;
+
 pub use movetext::Movetext;
 
 /// Create a [`Variation`](crate::movetext::Variation) out of SAN literals.

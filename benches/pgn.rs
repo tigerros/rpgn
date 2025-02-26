@@ -16,13 +16,10 @@ pub fn to_pgn(c: &mut Criterion) {
     let mut group = c.benchmark_group("to_pgn");
 
     for pgn in sans_samples().iter().filter_map(|s| s.parsed.as_ref().ok()) {
-        let Some(movetext) = &pgn.movetext else {
-            continue;
-        };
         let id = format!(
             "Simple {}-{}",
-            movetext.0.first().unwrap().to_string().replace('-', ""),
-            movetext.0.last().unwrap().to_string().replace('-', "")
+            pgn.movetext.0.first().unwrap().to_string().replace('-', ""),
+            pgn.movetext.0.last().unwrap().to_string().replace('-', "")
         );
 
         group.bench_with_input(BenchmarkId::from_parameter(id), &pgn, |b, pgn| {
@@ -34,13 +31,22 @@ pub fn to_pgn(c: &mut Criterion) {
         .iter()
         .filter_map(|s| s.parsed.as_ref().ok())
     {
-        let Some(movetext) = &pgn.movetext else {
-            continue;
-        };
         let id = format!(
             "Variation {}-{}",
-            movetext.0.first().unwrap().san.to_string().replace('-', ""),
-            movetext.0.last().unwrap().san.to_string().replace('-', "")
+            pgn.movetext
+                .0
+                .first()
+                .unwrap()
+                .san
+                .to_string()
+                .replace('-', ""),
+            pgn.movetext
+                .0
+                .last()
+                .unwrap()
+                .san
+                .to_string()
+                .replace('-', "")
         );
 
         group.bench_with_input(BenchmarkId::from_parameter(id), &pgn, |b, pgn| {
@@ -58,13 +64,10 @@ pub fn from_pgn(c: &mut Criterion) {
         .iter()
         .filter_map(|s| s.parsed.as_ref().ok().map(|p| (s.string, p)))
     {
-        let Some(movetext) = &pgn.movetext else {
-            continue;
-        };
         let id = format!(
             "Simple {}-{}",
-            movetext.0.first().unwrap().to_string().replace('-', ""),
-            movetext.0.last().unwrap().to_string().replace('-', "")
+            pgn.movetext.0.first().unwrap().to_string().replace('-', ""),
+            pgn.movetext.0.last().unwrap().to_string().replace('-', "")
         );
 
         group.bench_with_input(
@@ -78,13 +81,22 @@ pub fn from_pgn(c: &mut Criterion) {
         .iter()
         .filter_map(|s| s.parsed.as_ref().ok().map(|p| (s.string, p)))
     {
-        let Some(movetext) = &pgn.movetext else {
-            continue;
-        };
         let id = format!(
             "Variation {}-{}",
-            movetext.0.first().unwrap().san.to_string().replace('-', ""),
-            movetext.0.last().unwrap().san.to_string().replace('-', "")
+            pgn.movetext
+                .0
+                .first()
+                .unwrap()
+                .san
+                .to_string()
+                .replace('-', ""),
+            pgn.movetext
+                .0
+                .last()
+                .unwrap()
+                .san
+                .to_string()
+                .replace('-', "")
         );
 
         group.bench_with_input(

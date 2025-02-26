@@ -10,7 +10,7 @@ pub struct Eco {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub enum EcoParseError {
+pub enum Error {
     NotAscii,
     MissingCategory,
     MissingSubcategory,
@@ -20,16 +20,13 @@ pub enum EcoParseError {
     SubcategoryGreaterThan99,
 }
 
-#[derive(Debug, Copy, Clone)]
-pub struct SubcategoryGreaterThan99;
-
 impl Eco {
     /// # Errors
     /// 
-    /// `subcategory` is greater than 99.
-    pub const fn new(category: EcoCategory, subcategory: u8) -> Result<Self, SubcategoryGreaterThan99> {
+    /// Only possible variant is [`Error::SubcategoryGreaterThan99`].
+    pub const fn new(category: EcoCategory, subcategory: u8) -> Result<Self, Error> {
         if subcategory > 99 {
-            Err(SubcategoryGreaterThan99)
+            Err(Error::SubcategoryGreaterThan99)
         } else {
             Ok(Self {
                 category,
@@ -38,16 +35,17 @@ impl Eco {
         }
     }
 
+    /// Guaranteed to be less than 100.
     pub const fn get_subcategory(self) -> u8 {
         self.subcategory
     }
 
     /// # Errors
     /// 
-    /// `new_subcategory` is greater than 99.
-    pub fn set_subcategory(&mut self, new_subcategory: u8) -> Result<(), SubcategoryGreaterThan99> {
+    /// Only possible variant is [`Error::SubcategoryGreaterThan99`].
+    pub fn set_subcategory(&mut self, new_subcategory: u8) -> Result<(), Error> {
         if new_subcategory > 99 {
-            Err(SubcategoryGreaterThan99)
+            Err(Error::SubcategoryGreaterThan99)
         } else {
             self.subcategory = new_subcategory;
             Ok(())
@@ -62,7 +60,7 @@ impl Display for Eco {
 }
 
 impl FromStr for Eco {
-    type Err = EcoParseError;
+    type Err = Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         if !s.is_ascii() {

@@ -25,6 +25,11 @@ impl Display for Outcome {
 impl FromStr for Outcome {
     type Err = ();
 
+    /// There's only one error case: the string doesn't match any of these:
+    /// - `1-0`
+    /// - `0-1`
+    /// - `1/2-1/2`
+    /// - `*`
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "1-0" => Ok(Self::Decisive { winner: Color::White }),

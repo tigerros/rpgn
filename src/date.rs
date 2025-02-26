@@ -10,7 +10,7 @@ pub struct Date {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub enum DateValueError {
+pub enum ValueError {
     YearGreaterThan9999,
     MonthGreaterThan12,
     DayGreaterThan31,
@@ -18,24 +18,21 @@ pub enum DateValueError {
 
 impl Date {
     /// # Errors
-    ///
-    /// - `year` is greater than 9999.
-    /// - `month` is greater than 12.
-    /// - `day` is greater than 31.
-    pub fn new(year: Option<u16>, month: Option<NonZeroU8>, day: Option<NonZeroU8>) -> Result<Self, DateValueError> {
+    /// See [`ValueError`].
+    pub fn new(year: Option<u16>, month: Option<NonZeroU8>, day: Option<NonZeroU8>) -> Result<Self, ValueError> {
         if year.is_some_and(|y| y > 9999) {
-            return Err(DateValueError::YearGreaterThan9999);
+            return Err(ValueError::YearGreaterThan9999);
         }
 
         if let Some(month) = month {
             if month.get() > 12 {
-                return Err(DateValueError::MonthGreaterThan12);
+                return Err(ValueError::MonthGreaterThan12);
             }
         }
 
         if let Some(day) = day {
             if day.get() > 31 {
-                return Err(DateValueError::DayGreaterThan31);
+                return Err(ValueError::DayGreaterThan31);
             }
         }
 
@@ -70,15 +67,15 @@ impl Display for Date {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum DateParseError {
+pub enum ParseError {
     MissingYear,
     MissingMonth,
     MissingDay,
-    ValueError(DateValueError)
+    ValueError(ValueError)
 }
 
 impl FromStr for Date {
-    type Err = DateParseError;
+    type Err = ParseError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let mut split = s.split('.');
@@ -129,7 +126,7 @@ mod tests {
     proptest! {
         #[test]
         fn invalid_year(year in 10000..u16::MAX) {
-            assert_eq!(Date::new(Some(year), None, None), Err(DateValueError::YearGreaterThan9999));
+            assert_eq!(Date::new(Some(year), None, None), Err(ValueError::YearGreaterThan9999));
         }
 
         #[test]
@@ -137,7 +134,7 @@ mod tests {
             // SAFETY: The range 13..u8::MAX does not contain 0.
             // Also, it is a test who cares.
             let month = unsafe { NonZeroU8::new_unchecked(month) };
-            assert_eq!(Date::new(None, Some(month), None), Err(DateValueError::MonthGreaterThan12));
+            assert_eq!(Date::new(None, Some(month), None), Err(ValueError::MonthGreaterThan12));
         }
         
         #[test]
@@ -145,7 +142,7 @@ mod tests {
             // SAFETY: The range 32..u8::MAX does not contain 0.
             // Also, it is a test who cares.
             let day = unsafe { NonZeroU8::new_unchecked(day) };
-            assert_eq!(Date::new(None, None, Some(day)), Err(DateValueError::DayGreaterThan31));
+            assert_eq!(Date::new(None, None, Some(day)), Err(ValueError::DayGreaterThan31));
         }
     }
 }

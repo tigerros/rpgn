@@ -30,7 +30,9 @@ where
     /// This sets the `Pgn.movetext` field.
     /// Call this after using the visitor.
     pub fn end_game(self) {
-        self.pgn.movetext = self.movetext_agent.map(Movetext::end_game);
+        if let Some(movetext_agent) = self.movetext_agent {
+            self.pgn.movetext = Movetext::end_game(movetext_agent);
+        }
     }
 }
 

@@ -16,6 +16,12 @@ pub struct SanWithVariations<S> {
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub struct Variation<S>(pub Vec<SanWithVariations<S>>);
 
+impl<S> Default for Variation<S> {
+    fn default() -> Self {
+        Self(Vec::new())
+    }
+}
+
 impl<S> From<Sans<S>> for Variation<S> {
     fn from(san_vec: Sans<S>) -> Self {
         let mut variation_movetext = Self(Vec::with_capacity(san_vec.0.len()));
