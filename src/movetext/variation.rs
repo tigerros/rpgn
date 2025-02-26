@@ -4,7 +4,7 @@ use shakmaty::san::{San, SanPlus};
 use crate::{MoveNumber, Movetext, movetext::Sans};
 
 /// See [`Variation`].
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub struct SanWithVariations<S> {
     pub san: S,
     pub variations: Vec<Variation<S>>,
@@ -13,7 +13,7 @@ pub struct SanWithVariations<S> {
 /// A vec of SANs with variations. Use if you do care about variations.
 ///
 /// Regarding the generic `S`, see the docs for [`Sans`].
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone, Hash)]
 pub struct Variation<S>(pub Vec<SanWithVariations<S>>);
 
 impl<S> From<Sans<S>> for Variation<S> {

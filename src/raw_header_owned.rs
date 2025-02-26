@@ -2,7 +2,7 @@ use std::borrow::Cow;
 use std::str::Utf8Error;
 use pgn_reader::RawHeader;
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 /// Like [`pgn_reader::RawHeader`], but has ownership of the bytes.
 pub struct RawHeaderOwned(pub Vec<u8>);
 

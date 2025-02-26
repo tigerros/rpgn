@@ -9,7 +9,7 @@ pub struct Date {
     pub day: Option<NonZeroU8>
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum DateValueError {
     YearGreaterThan9999,
     MonthGreaterThan12,

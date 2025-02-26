@@ -10,7 +10,7 @@ use crate::movetext::{SanWithVariations, Variation};
 /// unless you need the [`SanPlus`] suffix.
 /// 
 /// Only implements [`Movetext`] if `S` is [`San`] or [`SanPlus`].
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Sans<S>(pub Vec<S>);
 
 impl<S> From<Variation<S>> for Sans<S> {
