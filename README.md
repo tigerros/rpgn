@@ -7,6 +7,7 @@
 # RPGN
 
 *Note: this is not a complete implementation of the PGN standard.*
+*Note: builds may fail because Clippy has a false positive warning. I can't even disable it so just ignore it.*
 
 <ins>R</ins>ust <ins>P</ins>ortable <ins>G</ins>ame <ins>N</ins>otation.
 
