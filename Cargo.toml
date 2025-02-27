@@ -1,6 +1,6 @@
 [package]
 name = "rpgn"
-version = "0.6.1"
+version = "0.6.2"
 edition = "2021"
 authors = ["Leonard D. <tigerros.gh@gmail.com>"]
 description = "A crate for parsing PGNs (Portable [Chess] Game Notation)."
@@ -17,6 +17,7 @@ shakmaty = "0.27.*"
 dry-mods = "0.1.*"
 fast-concat = "1.0.*"
 constcat = "0.6.*"
+deranged = { version = "~0.3", default-features = false }
 time = { version = "~0.3", default-features = false, optional = true }
 
 [dev-dependencies]

@@ -9,6 +9,7 @@ use crate::Movetext;
 use crate::RawHeaderOwned;
 use crate::{sans, variation};
 use crate::{Date, Eco, EcoCategory, Outcome, Pgn, Round};
+use deranged::{OptionRangedU16, OptionRangedU8, RangedU16, RangedU8};
 use pgn_reader::RawHeader;
 #[cfg(test)]
 use pretty_assertions::assert_eq;
@@ -19,7 +20,6 @@ use std::fmt::Debug;
 #[cfg(test)]
 use std::fmt::Display;
 use std::io;
-use std::num::NonZeroU8;
 
 #[derive(Debug)]
 pub struct PgnSample<M> {
@@ -64,7 +64,7 @@ where
 pub fn variation0() -> PgnSample<Variation<SanPlus>> {
     const PGN: &str = r#"[Event "Let's Play!"]
 [Site "Chess.com"]
-[Date "2024.02.14"]
+[Date "0000.02.14"]
 [Round "?"]
 [White "4m9n"]
 [Black "tigerros0"]
@@ -91,12 +91,11 @@ pub fn variation0() -> PgnSample<Variation<SanPlus>> {
         Ok(Pgn {
             event: Some(RawHeaderOwned::from(RawHeader(b"Let's Play!"))),
             site: Some(RawHeaderOwned::from(RawHeader(b"Chess.com"))),
-            date: Some(Ok(Date::new(
-                Some(2024),
-                Some(unsafe { NonZeroU8::new_unchecked(2) }),
-                Some(unsafe { NonZeroU8::new_unchecked(14) }),
-            )
-            .unwrap())),
+            date: Some(Ok(Date {
+                year: OptionRangedU16::Some(RangedU16::new_static::<0>()),
+                month: OptionRangedU8::Some(RangedU8::new_static::<2>()),
+                day: OptionRangedU8::Some(RangedU8::new_static::<14>()),
+            })),
             white: Some(RawHeaderOwned::from(RawHeader(b"4m9n"))),
             black: Some(RawHeaderOwned::from(RawHeader(b"tigerros0"))),
             outcome: Some(Ok(Outcome::Decisive {
@@ -105,7 +104,10 @@ pub fn variation0() -> PgnSample<Variation<SanPlus>> {
             round: Some(Ok(Round::Unknown)),
             white_elo: Some(Ok(1490)),
             black_elo: Some(Ok(1565)),
-            eco: Some(Ok(Eco::new(EcoCategory::C, 50).unwrap())),
+            eco: Some(Ok(Eco {
+                category: EcoCategory::C,
+                subcategory: RangedU8::new_static::<50>(),
+            })),
             time_control: Some(RawHeaderOwned::from(RawHeader(b"600+0"))),
             fen: None,
             movetext,
@@ -116,7 +118,7 @@ pub fn variation0() -> PgnSample<Variation<SanPlus>> {
 pub fn variation1() -> PgnSample<Variation<SanPlus>> {
     const PGN: &str = r#"[Event "Live Chess"]
 [Site "Lichess"]
-[Date "2024.02.??"]
+[Date "9999.02.??"]
 [Round "3.1.2"]
 [White "Nasrin_Babayeva"]
 [Black "tigerros0"]
@@ -135,12 +137,11 @@ pub fn variation1() -> PgnSample<Variation<SanPlus>> {
         Ok(Pgn {
             event: Some(RawHeaderOwned::from(RawHeader(b"Live Chess"))),
             site: Some(RawHeaderOwned::from(RawHeader(b"Lichess"))),
-            date: Some(Ok(Date::new(
-                Some(2024),
-                Some(unsafe { NonZeroU8::new_unchecked(2) }),
-                None,
-            )
-            .unwrap())),
+            date: Some(Ok(Date {
+                year: OptionRangedU16::Some(RangedU16::new_static::<9999>()),
+                month: OptionRangedU8::Some(RangedU8::new_static::<2>()),
+                day: OptionRangedU8::None,
+            })),
             white: Some(RawHeaderOwned::from(RawHeader(b"Nasrin_Babayeva"))),
             white_elo: Some(Ok(1765)),
             black: Some(RawHeaderOwned::from(RawHeader(b"tigerros0"))),
@@ -149,7 +150,10 @@ pub fn variation1() -> PgnSample<Variation<SanPlus>> {
                 winner: Color::Black,
             })),
             round: Some(Ok(Round::Multipart(vec![3, 1, 2]))),
-            eco: Some(Ok(Eco::new(EcoCategory::A, 00).unwrap())),
+            eco: Some(Ok(Eco {
+                category: EcoCategory::A,
+                subcategory: RangedU8::new_static::<0>(),
+            })),
             time_control: Some(RawHeaderOwned::from(RawHeader(b"600+2"))),
             fen: None,
             movetext,
@@ -180,19 +184,21 @@ pub fn variation2() -> PgnSample<Variation<SanPlus>> {
         Ok(Pgn {
             event: None,
             site: None,
-            date: Some(Ok(Date::new(
-                None,
-                Some(unsafe { NonZeroU8::new_unchecked(1) }),
-                None,
-            )
-            .unwrap())),
+            date: Some(Ok(Date {
+                year: OptionRangedU16::None,
+                month: OptionRangedU8::Some(RangedU8::new_static::<1>()),
+                day: OptionRangedU8::None,
+            })),
             white: None,
             black: None,
             outcome: Some(Ok(Outcome::Draw)),
             round: Some(Ok(Round::Normal(1))),
             white_elo: None,
             black_elo: None,
-            eco: Some(Ok(Eco::new(EcoCategory::C, 50).unwrap())),
+            eco: Some(Ok(Eco {
+                category: EcoCategory::C,
+                subcategory: RangedU8::new_static::<50>(),
+            })),
             time_control: None,
             fen: None,
             movetext,
