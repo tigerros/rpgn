@@ -12,8 +12,8 @@ pub struct Eco {
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum Error {
     NotAscii,
-    MissingCategory,
-    MissingSubcategory,
+    NoCategory,
+    NoSubcategory,
     /// Refer to [`EcoCategory::try_from`].
     InvalidCategory,
     InvalidSubcategory,
@@ -69,13 +69,13 @@ impl FromStr for Eco {
 
         let mut chars = s.chars();
         let Some(first) = chars.next() else {
-            return Err(Self::Err::MissingCategory);
+            return Err(Self::Err::NoCategory);
         };
         let Ok(category) = EcoCategory::try_from(first) else {
             return Err(Self::Err::InvalidCategory)
         };
         let Some(second) = chars.next() else {
-            return Err(Self::Err::MissingSubcategory);
+            return Err(Self::Err::NoSubcategory);
         };
         let Some(third) = chars.next() else {
             let Some(Ok(second)) = second.to_digit(10).map(u32::try_into) else {

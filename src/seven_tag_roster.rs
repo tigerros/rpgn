@@ -49,16 +49,16 @@ pub struct SevenTagRoster<M> {
 /// In that case, the error will be the first missing/erroneous field, in the order of the variants.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Error {
-    EventIsNone,
-    SiteIsNone,
-    DateIsNone,
-    DateIsErr,
-    RoundIsNone,
-    RoundIsErr,
-    WhiteIsNone,
-    BlackIsNone,
-    OutcomeIsNone,
-    OutcomeIsErr,
+    NoEvent,
+    NoSite,
+    NoDate,
+    ErrDate,
+    NoRound,
+    ErrRound,
+    NoWhite,
+    NoBlack,
+    NoOutcome,
+    ErrOutcome,
 }
 
 impl<M> TryFrom<Pgn<M>> for SevenTagRoster<M> {
@@ -66,43 +66,43 @@ impl<M> TryFrom<Pgn<M>> for SevenTagRoster<M> {
 
     fn try_from(pgn: Pgn<M>) -> Result<Self, Self::Error> {
         let Some(event) = pgn.event else {
-            return Err(Error::EventIsNone);
+            return Err(Error::NoEvent);
         };
 
         let Some(site) = pgn.site else {
-            return Err(Error::SiteIsNone);
+            return Err(Error::NoSite);
         };
 
         let Some(date) = pgn.date else {
-            return Err(Error::DateIsNone);
+            return Err(Error::NoDate);
         };
 
         let Ok(date) = date else {
-            return Err(Error::DateIsErr);
+            return Err(Error::ErrDate);
         };
 
         let Some(round) = pgn.round else {
-            return Err(Error::RoundIsNone);
+            return Err(Error::NoRound);
         };
 
         let Ok(round) = round else {
-            return Err(Error::RoundIsErr);
+            return Err(Error::ErrRound);
         };
 
         let Some(white) = pgn.white else {
-            return Err(Error::WhiteIsNone);
+            return Err(Error::NoWhite);
         };
 
         let Some(black) = pgn.black else {
-            return Err(Error::BlackIsNone);
+            return Err(Error::NoBlack);
         };
 
         let Some(outcome) = pgn.outcome else {
-            return Err(Error::OutcomeIsNone);
+            return Err(Error::NoOutcome);
         };
 
         let Ok(outcome) = outcome else {
-            return Err(Error::OutcomeIsErr);
+            return Err(Error::ErrOutcome);
         };
 
         Ok(Self {

@@ -15,3 +15,6 @@ A crate for parsing a PGN, built on [`shakmaty`](https://crates.io/crates/shakma
 
 `pgn-reader` only allows you to read individual, untyped parts of the PGN, but doesn't actually parse it into something useful.
 This crate parses a PGN into the `Pgn` struct. See the docs for more.
+
+## Features
+- `time` enables converting a RPGN date to a `time::Date` using `TryFrom`.
