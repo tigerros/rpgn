@@ -2,6 +2,7 @@
 #![deny(clippy::expect_used)]
 #![warn(clippy::pedantic)]
 #![warn(clippy::nursery)]
+#![allow(clippy::literal_string_with_formatting_args)]
 #![deny(clippy::unwrap_used, clippy::expect_used)]
 #![allow(clippy::must_use_candidate)]
 #![warn(missing_debug_implementations)]
