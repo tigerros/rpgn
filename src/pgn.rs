@@ -115,17 +115,13 @@ impl<M> Display for Pgn<M> where M: Display {
         macro_rules! push_pgn_header {
             ($field:ident, $header:expr) => {
                 if let Some($field) = &self.$field {
-                    ::paste::paste! {
-                        f.write_str(&::fast_concat::fast_concat!("[", $header, " \"", &$field.decode_utf8_lossy(), "\"]\n"))?;
-                    }
+                    f.write_str(&::fast_concat::fast_concat!("[", $header, " \"", &$field.decode_utf8_lossy(), "\"]\n"))?;
                 }
             };
 
             (custom_type: $field:ident, $header:expr) => {
                 if let Some(Ok($field)) = &self.$field {
-                    ::paste::paste! {
-                        f.write_str(&::fast_concat::fast_concat!("[", $header, " \"", &$field.to_string(), "\"]\n"))?;
-                    }
+                    f.write_str(&::fast_concat::fast_concat!("[", $header, " \"", &$field.to_string(), "\"]\n"))?;
                 }
             };
         }
