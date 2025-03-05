@@ -4,11 +4,37 @@ use shakmaty::Color;
 
 /// This is like [`shakmaty::Outcome`], but with an additional variant: [`Outcome::Other`].
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum Outcome {
-    Decisive { winner: Color },
+    Decisive {
+        #[cfg_attr(feature = "serde", serde(with = "color_serde"))]
+        winner: Color
+    },
     Draw,
     /// In progress, game abandoned, result otherwise unknown, or an invalid value.
     Other,
+}
+
+#[cfg(feature = "serde")]
+mod color_serde {
+    use serde::{Deserialize, Deserializer, Serializer};
+    use shakmaty::Color;
+
+    // CLIPPY: Serde requires a reference.
+    #[allow(clippy::trivially_copy_pass_by_ref)]
+    pub fn serialize<S>(color: &Color, serializer: S) -> Result<S::Ok, S::Error> where S: Serializer {
+        serializer.serialize_bool(*color == Color::Black)
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<Color, D::Error> where D: Deserializer<'de> {
+        let bool = bool::deserialize(deserializer)?;
+
+        Ok(if bool {
+            Color::Black
+        } else {
+            Color::White
+        })
+    }
 }
 
 impl Display for Outcome {
