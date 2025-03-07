@@ -60,9 +60,9 @@ pub fn to_pgn(c: &mut Criterion) {
 pub fn from_pgn(c: &mut Criterion) {
     let mut group = c.benchmark_group("from_pgn");
 
-    for (pgn_string, pgn) in sans_samples()
+    for (pgn_string_in, pgn) in sans_samples()
         .iter()
-        .filter_map(|s| s.parsed.as_ref().ok().map(|p| (s.string, p)))
+        .filter_map(|s| s.parsed.as_ref().ok().map(|p| (s.str_in, p)))
     {
         let id = format!(
             "Simple {}-{}",
@@ -72,14 +72,14 @@ pub fn from_pgn(c: &mut Criterion) {
 
         group.bench_with_input(
             BenchmarkId::from_parameter(id),
-            &pgn_string,
+            &pgn_string_in,
             |b, pgn_string| b.iter(|| Pgn::<Sans<SanPlus>>::from_str(pgn_string)),
         );
     }
 
-    for (pgn_string, pgn) in variation_samples()
+    for (pgn_string_in, pgn) in variation_samples()
         .iter()
-        .filter_map(|s| s.parsed.as_ref().ok().map(|p| (s.string, p)))
+        .filter_map(|s| s.parsed.as_ref().ok().map(|p| (s.str_in, p)))
     {
         let id = format!(
             "Variation {}-{}",
@@ -101,7 +101,7 @@ pub fn from_pgn(c: &mut Criterion) {
 
         group.bench_with_input(
             BenchmarkId::from_parameter(id),
-            &pgn_string,
+            &pgn_string_in,
             |b, pgn_string| b.iter(|| Pgn::<Variation<SanPlus>>::from_str(pgn_string)),
         );
     }

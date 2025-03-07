@@ -1,6 +1,8 @@
+use std::collections::HashMap;
 use std::fmt::{Display, Formatter, Write};
 use std::io::Read;
 use std::str::FromStr;
+use fast_concat::fast_concat;
 use pgn_reader::BufferedReader;
 use shakmaty::fen::{Fen, ParseFenError};
 use super::visitor::{Visitor};
@@ -43,6 +45,11 @@ pub struct Pgn<M> {
     /// Note that this FEN may not be a legal position.
     /// <https://www.saremba.de/chessgml/standards/pgn/pgn-complete.htm#c9.7.2>
     pub fen: Option<Result<Fen, ParseFenError>>,
+    /// Other headers which I haven't implemented yet. Doesn't allocate if there's no other headers.
+    ///
+    /// The headers are processed sequentially, so if there's identical headers,
+    /// the value of the last one wins.
+    pub other_headers: HashMap<Vec<u8>, RawHeaderOwned>,
     /// The actual game. See [`Movetext`].
     /// <https://www.saremba.de/chessgml/standards/pgn/pgn-complete.htm#c8.2>
     pub movetext: M,
@@ -64,6 +71,7 @@ impl<M> Default for Pgn<M> where M: Movetext {
             eco: None,
             time_control: None,
             fen: None,
+            other_headers: HashMap::new(),
             movetext: M::default(),
         }
     }
@@ -111,17 +119,19 @@ impl<M> Pgn<M> where M: Movetext {
 
 impl<M> Display for Pgn<M> where M: Display {
     /// Returns the string representation of this PGN.
+    ///
+    /// Types such as `Vec<u8>` are lossily decoded as UTF-8.
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         macro_rules! push_pgn_header {
             ($field:ident, $header:expr) => {
                 if let Some($field) = &self.$field {
-                    f.write_str(&::fast_concat::fast_concat!("[", $header, " \"", &$field.decode_utf8_lossy(), "\"]\n"))?;
+                    f.write_str(&fast_concat!("[", $header, " \"", &$field.decode_utf8_lossy(), "\"]\n"))?;
                 }
             };
 
             (custom_type: $field:ident, $header:expr) => {
                 if let Some(Ok($field)) = &self.$field {
-                    f.write_str(&::fast_concat::fast_concat!("[", $header, " \"", &$field.to_string(), "\"]\n"))?;
+                    f.write_str(&fast_concat!("[", $header, " \"", &$field.to_string(), "\"]\n"))?;
                 }
             };
         }
@@ -144,6 +154,10 @@ impl<M> Display for Pgn<M> where M: Display {
         push_pgn_header!(custom_type: eco, "ECO");
         push_pgn_header!(time_control, "TimeControl");
         push_pgn_header!(custom_type: fen, "FEN");
+
+        for (key, value) in &self.other_headers {
+            f.write_str(&fast_concat!("[", &String::from_utf8_lossy(key), " \"", &value.decode_utf8_lossy(), "\"]\n"))?;
+        }
 
         if any_fields_some!(event, site, date, round, white, black, outcome, white_elo, black_elo, eco, time_control, fen) {
             f.write_char('\n')?;

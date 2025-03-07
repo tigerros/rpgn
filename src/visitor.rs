@@ -6,7 +6,7 @@ use std::str::FromStr;
 
 /// Use to read a single PGN game with [`pgn_reader::BufferedReader`].
 /// See the [`pgn_reader`] docs for more information.
-/// Remember to call [`Visitor::end_game`] **after** using the visitor.
+/// Remember to call [`Visitor::end_game`] after using the visitor.
 #[derive(Debug)]
 pub struct Visitor<'pgn, M>
 where
@@ -43,6 +43,7 @@ where
     type Result = ();
 
     fn header(&mut self, key: &[u8], raw_header: RawHeader<'_>) {
+        let original_key = key.to_vec();
         match key.to_ascii_lowercase().as_slice() {
             b"event" => self.pgn.event = Some(raw_header.into()),
             b"site" => self.pgn.site = Some(raw_header.into()),
@@ -58,7 +59,9 @@ where
             b"eco" => self.pgn.eco = Some(Eco::from_str(&raw_header.decode_utf8_lossy())),
             b"timecontrol" => self.pgn.time_control = Some(raw_header.into()),
             b"fen" => self.pgn.fen = Some(Fen::from_str(&raw_header.decode_utf8_lossy())),
-            _ => {}
+            _ => {
+                self.pgn.other_headers.insert(original_key, raw_header.into());
+            }
         }
     }
 

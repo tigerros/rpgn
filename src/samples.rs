@@ -16,6 +16,7 @@ use pretty_assertions::assert_eq;
 use shakmaty::fen::Fen;
 use shakmaty::san::SanPlus;
 use shakmaty::Color;
+use std::collections::HashMap;
 use std::fmt::Debug;
 #[cfg(test)]
 use std::fmt::Display;
@@ -23,13 +24,30 @@ use std::io;
 
 #[derive(Debug)]
 pub struct PgnSample<M> {
-    pub string: &'static str,
+    pub str_in: &'static str,
+    pub str_out: &'static str,
     pub parsed: Result<Pgn<M>, io::Error>,
 }
 
 impl<M> PgnSample<M> {
-    pub const fn new(string: &'static str, parsed: Result<Pgn<M>, io::Error>) -> Self {
-        Self { string, parsed }
+    pub const fn simple(string: &'static str, parsed: Result<Pgn<M>, io::Error>) -> Self {
+        Self {
+            str_in: string,
+            str_out: string,
+            parsed,
+        }
+    }
+
+    pub const fn new(
+        str_in: &'static str,
+        str_out: &'static str,
+        parsed: Result<Pgn<M>, io::Error>,
+    ) -> Self {
+        Self {
+            str_in,
+            str_out,
+            parsed,
+        }
     }
 }
 
@@ -39,13 +57,13 @@ where
     M: Movetext + PartialEq + Debug + Display,
 {
     pub fn test(&self) {
-        let from_str_vec = Pgn::from_str(self.string);
+        let from_str_vec = Pgn::from_str(self.str_in);
         let from_str = from_str_vec.first().unwrap();
 
         match &self.parsed {
             Ok(parsed_pgn) => {
                 assert_eq!(from_str.as_ref().unwrap(), parsed_pgn);
-                assert_eq!(parsed_pgn.to_string(), self.string);
+                assert_eq!(parsed_pgn.to_string(), self.str_out);
             }
             Err(e1) => {
                 assert!(from_str.is_err());
@@ -86,7 +104,7 @@ pub fn variation0() -> PgnSample<Variation<SanPlus>> {
         b"Nc3"
     };
 
-    PgnSample::new(
+    PgnSample::simple(
         PGN,
         Ok(Pgn {
             event: Some(RawHeaderOwned::from(RawHeader(b"Let's Play!"))),
@@ -110,13 +128,14 @@ pub fn variation0() -> PgnSample<Variation<SanPlus>> {
             })),
             time_control: Some(RawHeaderOwned::from(RawHeader(b"600+0"))),
             fen: None,
+            other_headers: HashMap::new(),
             movetext,
         }),
     )
 }
 
 pub fn variation1() -> PgnSample<Variation<SanPlus>> {
-    const PGN: &str = r#"[Event "Live Chess"]
+    const PGN_IN: &str = r#"[Event "Live Chess"]
 [Site "Lichess"]
 [Date "9999.02.??"]
 [Round "3.1.2"]
@@ -127,13 +146,31 @@ pub fn variation1() -> PgnSample<Variation<SanPlus>> {
 [BlackElo "1584"]
 [ECO "A00"]
 [TimeControl "600+2"]
+[Variant "Chess960"]
+[Variant "Standard"]
+
+1. g4 1... e5 2. f3 2... Qh4#"#;
+
+    const PGN_OUT: &str = r#"[Event "Live Chess"]
+[Site "Lichess"]
+[Date "9999.02.??"]
+[Round "3.1.2"]
+[White "Nasrin_Babayeva"]
+[Black "tigerros0"]
+[Result "0-1"]
+[WhiteElo "1765"]
+[BlackElo "1584"]
+[ECO "A00"]
+[TimeControl "600+2"]
+[Variant "Standard"]
 
 1. g4 1... e5 2. f3 2... Qh4#"#;
 
     let movetext = variation! { b"g4", b"e5", b"f3", b"Qh4#" };
 
     PgnSample::new(
-        PGN,
+        PGN_IN,
+        PGN_OUT,
         Ok(Pgn {
             event: Some(RawHeaderOwned::from(RawHeader(b"Live Chess"))),
             site: Some(RawHeaderOwned::from(RawHeader(b"Lichess"))),
@@ -156,6 +193,10 @@ pub fn variation1() -> PgnSample<Variation<SanPlus>> {
             })),
             time_control: Some(RawHeaderOwned::from(RawHeader(b"600+2"))),
             fen: None,
+            other_headers: HashMap::from([(
+                b"Variant".to_vec(),
+                RawHeaderOwned::from(RawHeader(b"Standard")),
+            )]),
             movetext,
         }),
     )
@@ -166,6 +207,7 @@ pub fn variation2() -> PgnSample<Variation<SanPlus>> {
 [Round "1"]
 [Result "1/2-1/2"]
 [ECO "C50"]
+[UTCTime "22:13:31"]
 
 1. e4 ( 1. d4 1... d5 ( 1... f5 2. g3 ( 2. c4 2... Nf6 3. Nc3 3... e6 ( 3... g6 ) 4. Nf3 ) 2... Nf6 ) ) 1... e5 2. Nf3 2... Nc6 3. Bc4 3... Nf6 ( 3... Bc5 ) ( 3... Nge7 ) 4. d3 ( 4. O-O )"#;
 
@@ -179,7 +221,7 @@ pub fn variation2() -> PgnSample<Variation<SanPlus>> {
         (b"d3", [{ b"O-O" }])
     };
 
-    PgnSample::new(
+    PgnSample::simple(
         PGN,
         Ok(Pgn {
             event: None,
@@ -201,6 +243,10 @@ pub fn variation2() -> PgnSample<Variation<SanPlus>> {
             })),
             time_control: None,
             fen: None,
+            other_headers: HashMap::from([(
+                b"UTCTime".to_vec(),
+                RawHeaderOwned(b"22:13:31".to_vec()),
+            )]),
             movetext,
         }),
     )
@@ -214,7 +260,7 @@ pub fn sans0() -> PgnSample<Sans<SanPlus>> {
 
     let movetext = sans!(b"Nf3", b"a6", b"d3", b"a5", b"Nd2");
 
-    PgnSample::new(
+    PgnSample::simple(
         PGN,
         Ok(Pgn {
             fen: Some(Ok(Fen::from_ascii(
@@ -233,7 +279,7 @@ pub fn sans1() -> PgnSample<Sans<SanPlus>> {
 
     let movetext = sans!(b"e4");
 
-    PgnSample::new(
+    PgnSample::simple(
         PGN,
         Ok(Pgn {
             movetext,

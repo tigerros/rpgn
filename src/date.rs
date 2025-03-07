@@ -136,6 +136,7 @@ mod tests {
         assert_eq!(Date::from_str(date_str).unwrap(), date);
     }
 
+    #[cfg(feature = "time")]
     #[test_case(Ok(::time::Date::from_calendar_date(2000, ::time::Month::October, 15).unwrap()), Date { year: oru16!(2000), month: oru8!(10), day: oru8!(15) })]
     fn time(correct: Result<::time::Date, IntoTimeDateError>, test: Date) {
         assert_eq!(correct, ::time::Date::try_from(test));
