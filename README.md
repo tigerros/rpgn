@@ -18,3 +18,4 @@ This crate parses a PGN into the `Pgn` struct. See the docs for more.
 
 ## Features
 - `time` enables converting a RPGN date to a `time::Date` using `TryFrom`.
+- `serde` enables `Serialize` and `Deserialize` for most types. Types that implement **both** `Display` and `FromStr` (or `Into<char>` and `TryFrom<char>` like `EcoCategory`) use those implementations to `Serialize`/`Deserialize`. Other types use the automatic, derived version.

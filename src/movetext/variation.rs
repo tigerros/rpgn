@@ -5,6 +5,7 @@ use crate::{MoveNumber, Movetext, movetext::Sans};
 
 /// See [`Variation`].
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct SanWithVariations<S> {
     pub san: S,
     pub variations: Vec<Variation<S>>,
@@ -14,6 +15,7 @@ pub struct SanWithVariations<S> {
 ///
 /// Regarding the generic `S`, see the docs for [`Sans`].
 #[derive(Debug, PartialEq, Eq, Clone, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Variation<S>(pub Vec<SanWithVariations<S>>);
 
 impl<S> Default for Variation<S> {

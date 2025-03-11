@@ -9,6 +9,9 @@ pub struct Date {
     pub day: OptionRangedU8<1, 31>
 }
 
+#[cfg(feature = "serde")]
+crate::serde_display_from_str!(Date);
+
 #[cfg(feature = "time")]
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum IntoTimeDateError {
@@ -65,6 +68,18 @@ pub enum ParseError {
     NoMonth,
     NoDay,
 }
+
+impl Display for ParseError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::NoYear => f.write_str("no year in PGN date"),
+            Self::NoMonth => f.write_str("no month in PGN date"),
+            Self::NoDay => f.write_str("no day in PGN date"),
+        }
+    }
+}
+
+impl std::error::Error for ParseError {}
 
 impl FromStr for Date {
     type Err = ParseError;

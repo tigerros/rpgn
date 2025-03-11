@@ -3,7 +3,10 @@ use std::str::Utf8Error;
 use pgn_reader::RawHeader;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 /// Like [`pgn_reader::RawHeader`], but has ownership of the bytes.
+///
+/// serde implementations are derived; they will use the inner byte vec.
 pub struct RawHeaderOwned(pub Vec<u8>);
 
 impl From<RawHeader<'_>> for RawHeaderOwned {

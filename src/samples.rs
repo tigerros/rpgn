@@ -57,8 +57,7 @@ where
     M: Movetext + PartialEq + Debug + Display,
 {
     pub fn test(&self) {
-        let from_str_vec = Pgn::from_str(self.str_in);
-        let from_str = from_str_vec.first().unwrap();
+        let from_str = Pgn::from_str(self.str_in).map(Option::unwrap);
 
         match &self.parsed {
             Ok(parsed_pgn) => {

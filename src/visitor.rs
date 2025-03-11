@@ -60,7 +60,9 @@ where
             b"timecontrol" => self.pgn.time_control = Some(raw_header.into()),
             b"fen" => self.pgn.fen = Some(Fen::from_str(&raw_header.decode_utf8_lossy())),
             _ => {
-                self.pgn.other_headers.insert(original_key, raw_header.into());
+                self.pgn
+                    .other_headers
+                    .insert(original_key, raw_header.into());
             }
         }
     }

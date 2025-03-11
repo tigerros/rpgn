@@ -1,4 +1,5 @@
 use std::convert::TryFrom;
+use std::fmt::{Display, Formatter};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum EcoCategory {
@@ -9,11 +10,50 @@ pub enum EcoCategory {
     E
 }
 
-impl TryFrom<char> for EcoCategory {
-    type Error = ();
+#[cfg(feature = "serde")]
+impl serde::Serialize for EcoCategory {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.serialize_char((*self).into())
+    }
+}
 
-    /// The error type is blank because there's only one error scenario: the character
-    /// doesn't match one of the enum variants.
+#[cfg(feature = "serde")]
+impl<'de> serde::Deserialize<'de> for EcoCategory {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        use serde::de::Error;
+        let c = char::deserialize(deserializer)?;
+        
+        Self::try_from(c).map_err(D::Error::custom)
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Copy, Eq, Hash)]
+pub struct ParseError;
+
+impl Display for ParseError {
+    fn fmt(&self, f: &mut Formatter) -> Result<(), std::fmt::Error> {
+        f.write_str("string did not match any of the following ECO categories: A, B, C, D, E")
+    }
+}
+
+impl std::error::Error for ParseError {}
+
+impl TryFrom<char> for EcoCategory {
+    type Error = ParseError;
+
+    /// # Errors
+    /// The string doesn't match any of these:
+    /// - `A`
+    /// - `B`
+    /// - `C`
+    /// - `D`
+    /// - `E`
     fn try_from(value: char) -> Result<Self, Self::Error> {
         match value.to_ascii_uppercase() {
             'A' => Ok(Self::A),
@@ -21,7 +61,7 @@ impl TryFrom<char> for EcoCategory {
             'C' => Ok(Self::C),
             'D' => Ok(Self::D),
             'E' => Ok(Self::E),
-            _ => Err(()),
+            _ => Err(ParseError),
         }
     }
 }

@@ -9,6 +9,13 @@ use super::visitor::{Visitor};
 use crate::{Eco, Outcome, Date, Round, RawHeaderOwned, Movetext};
 
 /// The generic `M` should be a struct that implements [`Movetext`].
+///
+/// You may have noticed that there's `Option<Result<...>>` fields here.
+/// That's because I think it's better if the parsing doesn't stop just because one field
+/// errored, but I also didn't want to lose that error information.
+///
+/// This also means that the only errors when parsing PGNs are I/O errors produced by the underlying
+/// [`pgn_reader::BufferedReader`].
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Pgn<M> {
     /// See "Event" under "Seven Tag Roster".
@@ -55,6 +62,34 @@ pub struct Pgn<M> {
     pub movetext: M,
 }
 
+#[cfg(feature = "serde")]
+impl<M> serde::Serialize for Pgn<M>
+where
+    M: Display,
+{
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        serializer.serialize_str(self.to_string().as_str())
+    }
+}
+
+#[cfg(feature = "serde")]
+impl<'de, M> serde::Deserialize<'de> for Pgn<M>
+where
+    M: Display + Movetext,
+{
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        use serde::de::Error;
+
+        Self::from_str(<&str>::deserialize(deserializer)?).map_err(D::Error::custom)?.ok_or_else(|| D::Error::custom("no PGN found"))
+    }
+}
+
 impl<M> Default for Pgn<M> where M: Movetext {
     /// Creates a [`Pgn`] with all fields set to [`None`], and calls [`Default::default`] on `M`.
     fn default() -> Self {
@@ -78,22 +113,46 @@ impl<M> Default for Pgn<M> where M: Movetext {
 }
 
 impl<M> Pgn<M> where M: Movetext {
-    #[allow(clippy::should_implement_trait)]
-    /// Reads all games in this string.
+    /// Reads one game in this reader (and advances it), if there is one.
+    /// Use if you want to read games from a source one-by-one.
     ///
     /// # Errors
     /// See [`pgn_reader::BufferedReader::read_game`].
-    pub fn from_str(pgn: &str) -> Vec<Result<Self, std::io::Error>> {
-        let mut reader = pgn_reader::BufferedReader::new_cursor(pgn);
-        
+    pub fn from_reader<R>(reader: &mut BufferedReader<R>) -> Result<Option<Self>, std::io::Error> where R: Read {
+        let mut pgn = Self::default();
+        let mut pgn_visitor = Visitor::new(&mut pgn);
+
+        if reader.read_game(&mut pgn_visitor)? == Some(()) {
+            pgn_visitor.end_game();
+            Ok(Some(pgn))
+        } else {
+            Ok(None)
+        }
+    }
+
+    #[allow(clippy::should_implement_trait)]
+    /// Reads the first game in this string.
+    /// This is a convenience method for calling [`Self::from_reader_all`] with a
+    /// [`pgn_reader::BufferedReader`] wrapped around a string.
+    ///
+    /// Note that calling this multiple times on the same string will always return the same value.
+    /// If you want to read multiple PGNs in a string, use one of the other methods.
+    ///
+    /// # Errors
+    /// See [`Self::from_reader`].
+    pub fn from_str(str: &str) -> Result<Option<Self>, std::io::Error> {
+        let mut reader = pgn_reader::BufferedReader::new_cursor(str);
+
         Self::from_reader(&mut reader)
     }
     
-    /// Reads all games in this reader.
+    /// Reads all games in this reader (and empties it).
+    /// Consider using [`Self::from_reader`] and building the vec yourself if you plan to either
+    /// ignore the errors or stop reading if you encounter one, and want to increase efficiency.
     ///
     /// # Errors
     /// See [`pgn_reader::BufferedReader::read_game`].
-    pub fn from_reader<R>(reader: &mut BufferedReader<R>) -> Vec<Result<Self, std::io::Error>> where R: Read {
+    pub fn from_reader_all<R>(reader: &mut BufferedReader<R>) -> Vec<Result<Self, std::io::Error>> where R: Read {
         let mut pgns = Vec::new();
 
         loop {
@@ -114,6 +173,18 @@ impl<M> Pgn<M> where M: Movetext {
         }
 
         pgns
+    }
+
+    /// Reads all games in this string.
+    /// This is a convenience method for calling [`Self::from_reader_all`] with a
+    /// [`pgn_reader::BufferedReader`] wrapped around a string.
+    ///
+    /// # Errors
+    /// See [`Self::from_reader_all`].
+    pub fn from_str_all(str: &str) -> Vec<Result<Self, std::io::Error>> {
+        let mut reader = pgn_reader::BufferedReader::new_cursor(str);
+
+        Self::from_reader_all(&mut reader)
     }
 }
 

@@ -31,6 +31,8 @@
 )]
 #![doc = include_str!("../README.md")]
 
+mod visitor;
+
 dry_mods::mods! {
     pub mod eco, date, round;
     mod pub use
@@ -39,8 +41,7 @@ dry_mods::mods! {
     outcome,
     pgn,
     raw_header_owned,
-    movetext,
-    visitor;
+    movetext;
 }
 
 pub use date::Date;
@@ -49,10 +50,8 @@ pub use round::Round;
 
 /// These are samples I use in tests and benchmarks.
 /// They're public because benchmarks get the same crate you get.
+#[doc(hidden)]
 pub mod samples;
-pub mod seven_tag_roster;
-pub use seven_tag_roster::SevenTagRoster;
-
 pub use movetext::Movetext;
 
 /// Create a [`Variation`](crate::movetext::Variation) out of SAN literals.
@@ -85,3 +84,60 @@ macro_rules! sans {
         $crate::movetext::Sans(vec![$(::shakmaty::san::SanPlus::from_ascii($san).unwrap()),+])
     };
 }
+
+#[cfg(feature = "serde")]
+macro_rules! serde_display_from_str {
+    ($type:ident) => {
+        impl serde::Serialize for $type {
+            fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+            where
+                S: serde::Serializer,
+            {
+                serializer.serialize_str(self.to_string().as_str())
+            }
+        }
+
+        impl<'de> serde::Deserialize<'de> for $type {
+            fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+            where
+                D: serde::Deserializer<'de>,
+            {
+                use serde::de::Error;
+                <&str>::deserialize(deserializer)?
+                    .parse()
+                    .map_err(D::Error::custom)
+            }
+        }
+    };
+
+    ($type:ident<$g:ident: Display + FromStr>) => {
+        impl<$g> serde::Serialize for $type<$g>
+        where
+            $g: std::fmt::Display + std::str::FromStr,
+        {
+            fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+            where
+                S: serde::Serializer,
+            {
+                serializer.serialize_str(self.to_string().as_str())
+            }
+        }
+
+        impl<'de, $g> serde::Deserialize<'de> for $type<$g>
+        where
+            $g: std::fmt::Display + std::str::FromStr,
+        {
+            fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+            where
+                D: serde::Deserializer<'de>,
+            {
+                <&str>::deserialize(deserializer)?
+                    .parse()
+                    .map_err(serde::de::Error::custom)
+            }
+        }
+    };
+}
+
+#[cfg(feature = "serde")]
+pub(crate) use serde_display_from_str;

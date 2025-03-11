@@ -11,6 +11,9 @@ pub enum Round {
     Unknown
 }
 
+#[cfg(feature = "serde")]
+crate::serde_display_from_str!(Round);
+
 impl Display for Round {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -39,7 +42,7 @@ impl Display for Round {
 
 /// Note that a string may have multiple errors, but only one error is returned.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-pub enum Error {
+pub enum ParseError {
     /// When it contains a dot, but instead of containing only numbers separated by dots,
     /// it contains other stuff.
     InvalidMultipart {
@@ -54,15 +57,28 @@ pub enum Error {
     InvalidSinglepart
 }
 
+impl Display for ParseError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::InvalidMultipart { index } => write!(f, "invalid multipart PGN round. Error at index: {index}"),
+            Self::BeginningDot => f.write_str("dot at the start of a PGN round"),
+            Self::EndingDot => f.write_str("dot at the end of a PGN round"),
+            Self::InvalidSinglepart => f.write_str("invalid singlepart PGN round, i.e. failed to parse the string as a number or a question mark"),
+        }
+    }
+}
+
+impl std::error::Error for ParseError {}
+
 impl FromStr for Round {
-    type Err = Error;
+    type Err = ParseError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         if s.contains('.') {
             if s.starts_with('.') {
-                return Err(Error::BeginningDot);
+                return Err(ParseError::BeginningDot);
             } else if s.ends_with('.') {
-                return Err(Error::EndingDot);
+                return Err(ParseError::EndingDot);
             }
 
             let mut index = 0;
@@ -70,7 +86,7 @@ impl FromStr for Round {
             let mut numbers = Vec::new();
 
             for word in split {
-                let number = word.parse().map_err(|_| Error::InvalidMultipart { index })?;
+                let number = word.parse().map_err(|_| ParseError::InvalidMultipart { index })?;
 
                 numbers.push(number);
                 index = index.saturating_add(word.len()).saturating_add(1);
@@ -82,7 +98,7 @@ impl FromStr for Round {
         s.parse().map_or_else(|_| if s == "?" {
             Ok(Self::Unknown)
         } else {
-            Err(Error::InvalidSinglepart)
+            Err(ParseError::InvalidSinglepart)
         }, |parsed| Ok(Self::Normal(parsed)))
     }
 }
@@ -100,15 +116,15 @@ mod tests {
     #[test_case(Ok(Round::Multipart(vec![3, 7, 1])), "3.7.1")]
     #[test_case(Ok(Round::Multipart(vec![200, 1000, 0, 1])), "200.1000.0.1")]
     #[test_case(Ok(Round::Unknown), "?")]
-    #[test_case(Err(Error::InvalidSinglepart), "F")]
-    #[test_case(Err(Error::BeginningDot), ".6.8")]
-    #[test_case(Err(Error::BeginningDot), ".")]
-    #[test_case(Err(Error::EndingDot), "0.7.")]
-    #[test_case(Err(Error::InvalidMultipart { index: 2 }), "3.a.0")]
-    #[test_case(Err(Error::InvalidMultipart { index: 2 }), "3..0")]
-    #[test_case(Err(Error::InvalidMultipart { index: 0 }), "a.1000.0.1")]
-    #[test_case(Err(Error::InvalidMultipart { index: 6 }), "1.100.55503480958345093458435839058439058309548594358435039589")] // I don't support these numbers :P
-    fn to_string_from_string(round: Result<Round, Error>, round_str: &str) {
+    #[test_case(Err(ParseError::InvalidSinglepart), "F")]
+    #[test_case(Err(ParseError::BeginningDot), ".6.8")]
+    #[test_case(Err(ParseError::BeginningDot), ".")]
+    #[test_case(Err(ParseError::EndingDot), "0.7.")]
+    #[test_case(Err(ParseError::InvalidMultipart { index: 2 }), "3.a.0")]
+    #[test_case(Err(ParseError::InvalidMultipart { index: 2 }), "3..0")]
+    #[test_case(Err(ParseError::InvalidMultipart { index: 0 }), "a.1000.0.1")]
+    #[test_case(Err(ParseError::InvalidMultipart { index: 6 }), "1.100.55503480958345093458435839058439058309548594358435039589")] // I don't support these numbers :P
+    fn to_string_from_string(round: Result<Round, ParseError>, round_str: &str) {
         assert_eq!(Round::from_str(round_str), round);
 
         if let Ok(round) = round {

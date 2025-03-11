@@ -10,8 +10,11 @@ pub struct Eco {
     pub subcategory: RangedU8<0, 99>,
 }
 
+#[cfg(feature = "serde")]
+crate::serde_display_from_str!(Eco);
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub enum Error {
+pub enum ParseError {
     NotAscii,
     NoCategory,
     NoSubcategoryFirstDigit,
@@ -22,6 +25,22 @@ pub enum Error {
     InvalidCategory,
 }
 
+impl Display for ParseError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::NotAscii => f.write_str("not ascii"),
+            Self::NoCategory => f.write_str("no ECO category given"),
+            Self::NoSubcategoryFirstDigit => f.write_str("missing ECO subcategory first digit"),
+            Self::NoSubcategorySecondDigit => f.write_str("missing ECO subcategory second digit"),
+            Self::InvalidSubcategoryFirstDigit => f.write_str("invalid ECO subcategory first digit"),
+            Self::InvalidSubcategorySecondDigit => f.write_str("invalid ECO subcategory second digit"),
+            Self::InvalidCategory => f.write_str("invalid ECO category")
+        }
+    }
+}
+
+impl std::error::Error for ParseError {}
+
 impl Display for Eco {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}{:0>2}", <EcoCategory as Into<char>>::into(self.category), self.subcategory)
@@ -29,7 +48,7 @@ impl Display for Eco {
 }
 
 impl FromStr for Eco {
-    type Err = Error;
+    type Err = ParseError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         if !s.is_ascii() {
@@ -56,7 +75,7 @@ impl FromStr for Eco {
             return Err(Self::Err::InvalidSubcategorySecondDigit);
         };
 
-        // SAFETY: Both of these numbers are 0-9. They can't be larger than 99 in this calculation.
+        // SAFETY: Both numbers are 0-9. They can't be larger than 99 in this calculation.
         #[allow(unsafe_code)]
         #[allow(clippy::arithmetic_side_effects)]
         Ok(Self { category, subcategory: unsafe { RangedU8::new_unchecked(second * 10 + third) } })

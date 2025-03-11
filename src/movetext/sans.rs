@@ -11,6 +11,7 @@ use crate::movetext::{SanWithVariations, Variation};
 /// 
 /// Only implements [`Movetext`] if `S` is [`San`] or [`SanPlus`].
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct Sans<S>(pub Vec<S>);
 
 impl<S> Default for Sans<S> {

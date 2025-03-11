@@ -6,10 +6,12 @@ use shakmaty::Color;
 /// Think of the backing field of the [`MoveNumber`] as an "index",
 /// becasue it starts at 0 as opposed to the move numbers in the PGN notation.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct MoveNumber(pub usize);
 
 impl MoveNumber {
     pub const MIN: Self = Self(0);
+    
     pub const fn from_color_and_number(color: Color, number: NonZeroUsize) -> Self {
         // CLIPPY: Since `number` is a non-zero number, `number.get() - 1` will never overflow.
         // And there's never going to be enough moves for * 2 to cause an overflow.
@@ -32,10 +34,12 @@ impl MoveNumber {
     /// This is the "number" of the move, aka. what is shown in a PGN.
     /// For example, white's first move has an "index" of 0, but a number of 1.
     /// Black's first move has an index of 1, and a number of 1 also.
+    #[allow(clippy::missing_panics_doc)] // CLIPPY: Doesn't actually panic
     pub const fn number(self) -> NonZeroUsize {
-        // SAFETY & CLIPPY: usize / 2 >= 0 so usize::MAX > (1 + usize / 2) > 0
+        // CLIPPY: usize / 2 >= 0 so usize::MAX > (1 + usize / 2) > 0
         #[allow(clippy::arithmetic_side_effects)]
-        unsafe { NonZeroUsize::new_unchecked(1 + (self.0 / 2)) }
+        #[allow(clippy::unwrap_used)]
+        NonZeroUsize::new(1 + (self.0 / 2)).unwrap()
     }
 
     /// Returns how many moves white has played before this move number was reached.

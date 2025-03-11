@@ -4,38 +4,26 @@ use shakmaty::Color;
 
 /// This is like [`shakmaty::Outcome`], but with an additional variant: [`Outcome::Other`].
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum Outcome {
-    Decisive {
-        #[cfg_attr(feature = "serde", serde(with = "color_serde"))]
-        winner: Color
-    },
+    Decisive { winner: Color },
     Draw,
     /// In progress, game abandoned, result otherwise unknown, or an invalid value.
     Other,
 }
 
 #[cfg(feature = "serde")]
-mod color_serde {
-    use serde::{Deserialize, Deserializer, Serializer};
-    use shakmaty::Color;
+crate::serde_display_from_str!(Outcome);
 
-    // CLIPPY: Serde requires a reference.
-    #[allow(clippy::trivially_copy_pass_by_ref)]
-    pub fn serialize<S>(color: &Color, serializer: S) -> Result<S::Ok, S::Error> where S: Serializer {
-        serializer.serialize_bool(*color == Color::Black)
-    }
+#[derive(Clone, Debug, PartialEq, Copy, Eq, Hash)]
+pub struct ParseError;
 
-    pub fn deserialize<'de, D>(deserializer: D) -> Result<Color, D::Error> where D: Deserializer<'de> {
-        let bool = bool::deserialize(deserializer)?;
-
-        Ok(if bool {
-            Color::Black
-        } else {
-            Color::White
-        })
+impl Display for ParseError {
+    fn fmt(&self, f: &mut Formatter) -> Result<(), std::fmt::Error> {
+        f.write_str("string did not match any of the following: 1-0, 0-1, 1/2-1/2, *")
     }
 }
+
+impl std::error::Error for ParseError {}
 
 impl Display for Outcome {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
@@ -49,9 +37,10 @@ impl Display for Outcome {
 }
 
 impl FromStr for Outcome {
-    type Err = ();
+    type Err = ParseError;
 
-    /// There's only one error case: the string doesn't match any of these:
+    /// # Errors
+    /// The string doesn't match any of these:
     /// - `1-0`
     /// - `0-1`
     /// - `1/2-1/2`
@@ -62,7 +51,7 @@ impl FromStr for Outcome {
             "0-1" => Ok(Self::Decisive { winner: Color::Black }),
             "1/2-1/2" => Ok(Self::Draw),
             "*" => Ok(Self::Other),
-            _ => Err(()),
+            _ => Err(ParseError),
         }
     }
 }
