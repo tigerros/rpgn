@@ -7,8 +7,8 @@ dry_mods::mods! {
 
 /// The trait for making a movetext in the [`Pgn`](crate::Pgn) using the structure of the [`pgn_reader::Visitor`].
 ///
-/// See [`Sans`] and [`Variation`].
-/// You can also implement this yourself and use that in a [`Pgn`](crate::Pgn).
+/// Implementors are [`Sans`], [`Variation`] and `()`, if you would like to ignore the movetext.
+/// You can also implement this yourself.
 pub trait Movetext: Default {
     /// This is what is actually implementing the core functionality.
     /// The type implementing the [`Movetext`] trait is just what the [`Movetext::Agent`] outputs.
@@ -26,4 +26,12 @@ pub trait Movetext: Default {
     // fn foo(self) -> Self { self } is actually a noop on -Copt-level=3.
     // I think it should apply to traits too, since they're just sugar.
     fn end_game(agent: Self::Agent) -> Self;
+}
+
+impl Movetext for () {
+    type Agent = ();
+
+    fn begin_game() -> Self::Agent {}
+    fn san((): &mut Self::Agent, _: SanPlus) {}
+    fn end_game((): Self::Agent) {}
 }
