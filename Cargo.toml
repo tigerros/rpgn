@@ -1,6 +1,6 @@
 [package]
 name = "rpgn"
-version = "0.8.0"
+version = "0.8.1"
 edition = "2021"
 authors = ["Leonard D. <tigerros.gh@gmail.com>"]
 description = "A crate for parsing PGNs (Portable [Chess] Game Notation)."
@@ -25,9 +25,9 @@ serde = { version = "1", features = ["derive"], optional = true }
 serde = ["shakmaty/serde", "dep:serde", "deranged/serde"]
 
 [dev-dependencies]
-test-case = "3.3.*"
-pretty_assertions = "1.4.*"
-proptest = "1.6.*"
+test-case = "3"
+pretty_assertions = "1"
+proptest = "1"
 criterion = "0.5.*"
 
 [[bench]]
