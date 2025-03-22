@@ -132,7 +132,7 @@ impl<M> Pgn<M> where M: Movetext {
 
     #[allow(clippy::should_implement_trait)]
     /// Reads the first game in this string.
-    /// This is a convenience method for calling [`Self::from_reader_all`] with a
+    /// This is a convenience method for calling [`Self::from_reader`] with a
     /// [`pgn_reader::BufferedReader`] wrapped around a string.
     ///
     /// Note that calling this multiple times on the same string will always return the same value.
