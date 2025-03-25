@@ -7,7 +7,7 @@ use shakmaty::Color;
 pub enum Outcome {
     Decisive { winner: Color },
     Draw,
-    /// In progress, game abandoned, result otherwise unknown, or an invalid value.
+    /// `*` - In progress, game abandoned, result otherwise unknown.
     Other,
 }
 
