@@ -29,6 +29,7 @@
     clippy::print_stdout,
     clippy::print_stderr
 )]
+#![forbid(unsafe_code)]
 #![doc = include_str!("../README.md")]
 
 mod visitor;

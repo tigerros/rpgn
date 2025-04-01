@@ -75,10 +75,10 @@ impl FromStr for Eco {
             return Err(Self::Err::InvalidSubcategorySecondDigit);
         };
 
-        // SAFETY: Both numbers are 0-9. They can't be larger than 99 in this calculation.
-        #[allow(unsafe_code)]
+        // CLIPPY: Both numbers are 0-9. They can't be larger than 99 in this calculation.
         #[allow(clippy::arithmetic_side_effects)]
-        Ok(Self { category, subcategory: unsafe { RangedU8::new_unchecked(second * 10 + third) } })
+        #[allow(clippy::unwrap_used)]
+        Ok(Self { category, subcategory: RangedU8::new(second * 10 + third).unwrap() })
     }
 }
 
