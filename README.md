@@ -1,8 +1,8 @@
-[![build](https://img.shields.io/github/actions/workflow/status/tigerros/rpgn/correctness.yml?label=build)](https://github.com/tigerros/rpgn/actions/workflows/correctness.yml)
+[![tests](https://img.shields.io/github/actions/workflow/status/tigerros/rpgn/test.yml?label=tests)](https://github.com/tigerros/rpgn/actions/workflows/test.yml)
+[![clippy](https://img.shields.io/github/actions/workflow/status/tigerros/rpgn/clippy.yml?label=clippy)](https://github.com/tigerros/rpgn/actions/workflows/clippy.yml)
 [![coverage](https://img.shields.io/codecov/c/gh/tigerros/rpgn)](https://app.codecov.io/gh/tigerros/rpgn/)
 [![docs.rs](https://img.shields.io/docsrs/rpgn?logo=docs.rs&label=docs.rs)](https://docs.rs/rpgn/)
 [![crates.io](https://img.shields.io/crates/v/rpgn?logo=rust)](https://crates.io/crates/rpgn)
-[![license](https://img.shields.io/crates/l/rpgn)](https://github.com/tigerros/rpgn/blob/master/LICENSE)
 
 # rpgn
 
