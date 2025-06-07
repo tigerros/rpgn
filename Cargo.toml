@@ -21,7 +21,7 @@ dry-mods = "~0.1"
 fast-concat = "1"
 pgn-reader = "~0.26"
 serde = { version = "1", features = ["derive"], optional = true }
-shakmaty = "~0.27"
+shakmaty = "0.27.3"
 time = { version = "~0.3", default-features = false, optional = true }
 
 [dev-dependencies]

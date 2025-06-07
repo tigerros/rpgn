@@ -20,7 +20,7 @@ impl<'pgn, M> Visitor<'pgn, M>
 where
     M: Movetext,
 {
-    pub fn new(pgn: &'pgn mut Pgn<M>) -> Self {
+    pub const fn new(pgn: &'pgn mut Pgn<M>) -> Self {
         Visitor {
             pgn,
             movetext_agent: None,
