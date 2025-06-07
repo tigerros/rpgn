@@ -9,26 +9,26 @@ repository = "https://github.com/tigerros/rpgn"
 categories = ["parser-implementations", "game-development", "parsing"]
 keywords = ["chess", "pgn", "parser"]
 include = ["src", "README.md"]
-rust-version = "1.78.0"
-
-[dependencies]
-pgn-reader = "~0.26"
-shakmaty = "~0.27"
-dry-mods = "~0.1"
-fast-concat = "1"
-constcat = "~0.6"
-deranged = { version = "~0.3", default-features = false }
-time = { version = "~0.3", default-features = false, optional = true }
-serde = { version = "1", features = ["derive"], optional = true }
 
 [features]
+time = ["dep:time"]
 serde = ["shakmaty/serde", "dep:serde", "deranged/serde"]
 
+[dependencies]
+constcat = "~0.6"
+deranged = { version = "~0.4", default-features = false }
+dry-mods = "~0.1"
+fast-concat = "1"
+pgn-reader = "~0.26"
+serde = { version = "1", features = ["derive"], optional = true }
+shakmaty = "~0.27"
+time = { version = "~0.3", default-features = false, optional = true }
+
 [dev-dependencies]
-test-case = "3"
-pretty_assertions = "1"
-proptest = "1"
-criterion = "0.5.*"
+criterion = "0.6.0"
+pretty_assertions = "1.4.1"
+proptest = "1.7.0"
+test-case = "3.3.1"
 
 [[bench]]
 name = "pgn"

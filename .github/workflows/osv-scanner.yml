@@ -1,0 +1,40 @@
+name: OSV scanner
+
+on:
+  pull_request:
+  merge_group:
+  schedule:
+    - cron: '30 10 * * 1'
+  push:
+
+permissions:
+  security-events: write
+  contents: read
+  actions: read
+
+jobs:
+  generate-lockfile:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo generate-lockfile
+      - name: Upload Cargo.lock
+        uses: actions/upload-artifact@v4
+        with:
+          name: cargo-lock
+          path: 'Cargo.lock'
+  scan-scheduled:
+    needs: generate-lockfile
+    if: ${{ github.event_name == 'push' || github.event_name == 'schedule' }}
+    uses: "google/osv-scanner-action/.github/workflows/osv-scanner-reusable.yml@v2.0.2"
+    with:
+      scan-args: --lockfile=Cargo.lock
+      download-artifact: cargo-lock
+  scan-pr:
+    needs: generate-lockfile
+    if: ${{ github.event_name == 'pull_request' || github.event_name == 'merge_group' }}
+    uses: "google/osv-scanner-action/.github/workflows/osv-scanner-reusable-pr.yml@v2.0.2"
+    with:
+      scan-args: --lockfile=Cargo.lock

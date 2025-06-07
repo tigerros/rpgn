@@ -1,6 +1,10 @@
 name: Coverage
 
-on: [push]
+on:
+  push:
+    branches:
+      - master
+
 jobs:
   test:
     name: coverage
@@ -12,9 +16,12 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Use nightly
+        run: rustup default nightly
+
       - name: Generate code coverage
         run: |
-          cargo +nightly tarpaulin --verbose --all-features --workspace --timeout 120 --out xml
+          cargo tarpaulin --all-features --all-targets --doc --out xml
 
       - name: Upload to codecov.io
         uses: codecov/codecov-action@v5
