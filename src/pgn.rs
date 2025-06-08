@@ -6,7 +6,7 @@ use fast_concat::fast_concat;
 use pgn_reader::BufferedReader;
 use shakmaty::fen::{Fen, ParseFenError};
 use super::visitor::{Visitor};
-use crate::{Eco, Outcome, Date, Round, RawHeaderOwned, Movetext};
+use crate::{Outcome, Date, Round, RawHeaderOwned, Movetext};
 
 // macro_rules! pgn_and_config {
 //     (
@@ -34,6 +34,8 @@ use crate::{Eco, Outcome, Date, Round, RawHeaderOwned, Movetext};
 //         }
 //     };
 // }
+
+
 
 /// The generic `M` should be a struct that implements [`Movetext`].
 ///
@@ -78,7 +80,7 @@ pub struct Pgn<M> {
     /// <https://www.saremba.de/chessgml/standards/pgn/pgn-complete.htm#AEN197>
     pub outcome: Option<Result<Outcome, <Outcome as FromStr>::Err>>,
     /// <https://www.saremba.de/chessgml/standards/pgn/pgn-complete.htm#c9.4.1>
-    pub eco: Option<Result<Eco, <Eco as FromStr>::Err>>,
+    pub eco: Option<Result<reco::Code, <reco::Code as FromStr>::Err>>,
     // TODO: Make a time control type
     /// Not typed yet.
     ///

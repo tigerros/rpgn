@@ -1,4 +1,4 @@
-use crate::{Date, Eco, Movetext, Outcome, Pgn, Round};
+use crate::{Date, Movetext, Outcome, Pgn, Round};
 use pgn_reader::{RawHeader, Skip};
 use shakmaty::fen::Fen;
 use shakmaty::san::SanPlus;
@@ -56,7 +56,7 @@ where
                 self.pgn.outcome = Some(Outcome::from_str(&raw_header.decode_utf8_lossy()));
             }
             b"round" => self.pgn.round = Some(Round::from_str(&raw_header.decode_utf8_lossy())),
-            b"eco" => self.pgn.eco = Some(Eco::from_str(&raw_header.decode_utf8_lossy())),
+            b"eco" => self.pgn.eco = Some(reco::Code::from_str(&raw_header.decode_utf8_lossy())),
             b"timecontrol" => self.pgn.time_control = Some(raw_header.into()),
             b"fen" => self.pgn.fen = Some(Fen::from_str(&raw_header.decode_utf8_lossy())),
             _ => {

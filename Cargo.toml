@@ -23,6 +23,7 @@ pgn-reader = "~0.26"
 serde = { version = "1.0.197", features = ["derive"], optional = true }
 shakmaty = "0.27.3"
 time = { version = "0.3.1", default-features = false, optional = true }
+reco = { git = "https://github.com/tigerros/reco", branch = "master", default-features = false }
 
 [dev-dependencies]
 criterion = "0.6.0"

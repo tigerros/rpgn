@@ -8,7 +8,7 @@ use crate::movetext::{Sans, Variation};
 use crate::Movetext;
 use crate::RawHeaderOwned;
 use crate::{sans, variation};
-use crate::{Date, Eco, EcoCategory, Outcome, Pgn, Round};
+use crate::{Date, Outcome, Pgn, Round};
 use deranged::{OptionRangedU16, OptionRangedU8, RangedU16, RangedU8};
 use pgn_reader::RawHeader;
 #[cfg(test)]
@@ -121,9 +121,9 @@ pub fn variation0() -> PgnSample<Variation<SanPlus>> {
             round: Some(Ok(Round::Unknown)),
             white_elo: Some(Ok(1490)),
             black_elo: Some(Ok(1565)),
-            eco: Some(Ok(Eco {
-                category: EcoCategory::C,
-                subcategory: RangedU8::new_static::<50>(),
+            eco: Some(Ok(reco::Code {
+                volume: reco::Volume::C,
+                category: reco::Category::new_static::<50>(),
             })),
             time_control: Some(RawHeaderOwned::from(RawHeader(b"600+0"))),
             fen: None,
@@ -186,9 +186,9 @@ pub fn variation1() -> PgnSample<Variation<SanPlus>> {
                 winner: Color::Black,
             })),
             round: Some(Ok(Round::Multipart(vec![3, 1, 2]))),
-            eco: Some(Ok(Eco {
-                category: EcoCategory::A,
-                subcategory: RangedU8::new_static::<0>(),
+            eco: Some(Ok(reco::Code {
+                volume: reco::Volume::A,
+                category: reco::Category::new_static::<0>(),
             })),
             time_control: Some(RawHeaderOwned::from(RawHeader(b"600+2"))),
             fen: None,
@@ -236,9 +236,9 @@ pub fn variation2() -> PgnSample<Variation<SanPlus>> {
             round: Some(Ok(Round::Normal(1))),
             white_elo: None,
             black_elo: None,
-            eco: Some(Ok(Eco {
-                category: EcoCategory::C,
-                subcategory: RangedU8::new_static::<50>(),
+            eco: Some(Ok(reco::Code {
+                volume: reco::Volume::C,
+                category: reco::Category::new_static::<50>(),
             })),
             time_control: None,
             fen: None,

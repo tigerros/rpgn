@@ -35,9 +35,8 @@
 mod visitor;
 
 dry_mods::mods! {
-    pub mod eco, date, round;
+    pub mod date, round;
     mod pub use
-    eco_category,
     move_number,
     outcome,
     pgn,
@@ -46,7 +45,6 @@ dry_mods::mods! {
 }
 
 pub use date::Date;
-pub use eco::Eco;
 pub use round::Round;
 
 /// These are samples I use in tests and benchmarks.
